@@ -57,7 +57,7 @@ Unquote using the function application operator `.`:
 # [2]
 ```
 
-Define and apply an anonymous function with `λ` or `\\`:
+Define and apply an anonymous function with `λ`/`\` and `→`/`->`:
 ```python
 1 2 λ a b → b a
 # [2,1]

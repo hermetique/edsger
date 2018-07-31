@@ -21,7 +21,7 @@ Simple values (string and numeric literals) are pushed onto the stack:
 ```
 
 Function application is postfix:
-```python
+```bash
 "hello, " "world" ++
 # ["hello, world"]
 ```
@@ -35,7 +35,7 @@ n tri ≡ n [n 1 -] tri + # square brackets are superfluous; just for visual gro
 ```
 
 Define multiple cases at once by chaining equations together:
-```python
+```scheme
 0 even? ≡ 1 odd? ≡ true
 1 even? ≡ 0 odd? ≡ false
 n even? ≡ n 1 - odd?

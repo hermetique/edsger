@@ -64,7 +64,7 @@ e.g. a boolean data type (after this declaration, `true` and `false` will push t
 data true | false
 ```
 
-The `data` declaration also defines two tags of the same name that can be used in pattern matching:
+Custom data types can also be used in pattern matching:
 ```haskell
 true show ≡ "true"
 false show ≡ "false"

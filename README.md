@@ -2,7 +2,7 @@
 
 Concatenative programming language.
 
-Useful scripts in this directory and what they do:
+Useful scripts in this directory:
 - `egi`: interactive repl (= `node edsger.js repl`)
 - `egc <src> <dst>`: compile `<src>` to bytecode (= `node edsger.js compile <src> <dst>`)
 - `egd <src>`: disassemble bytecode (= `node edsger.js disassemble <src>`)

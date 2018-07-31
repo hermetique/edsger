@@ -1,0 +1,24 @@
+# combinator for linear recursion on natural numbers
+# base is f(0)
+# ind sends f(n - 1), n to f(n)
+0 base ind natrec ≡ base
+n base ind natrec ≡ [n 1 -] base ind natrec n ind .
+
+# factorial and triangular numbers
+fac ≡ 1 (*) natrec
+tri ≡ 0 (+) natrec
+
+# fibonacci numbers
+n fib ≡ 1 1 n fib' instead where
+  _ a instead ≡ a
+  a b 0 fib' ≡ a b
+  a b n fib' ≡ [a b +] a [n 1 -] fib'
+
+# compute some function f for all nats <= n
+0 f demo ≡ 0 f .
+n f demo ≡ [n 1 -] f demo n f .
+
+# some computations
+20 (tri) demo
+20 (fib) demo
+20 (fac) demo

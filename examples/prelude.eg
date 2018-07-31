@@ -1,0 +1,5 @@
+# some useful combinators
+a b instead ≡ b
+a del ≡
+a dup ≡ a a
+a b swap ≡ b a

@@ -108,7 +108,7 @@ n fib ≡ 1 1 n fib' instead where
   a b n fib' ≡ [a b +] a [n 1 -] fib'
 ```
 
-A `{lhs|rhs}` comprehension intersperses an expression on the rhs between all but first two items of lhs. For example,
+A `{lhs | rhs}` comprehension intersperses `rhs` between all but first two items of `lhs`. For example,
 ```haskell
 data nil | tail head cons
 {nil 1 2 3 4 5 6 7 8 9 10 | cons}

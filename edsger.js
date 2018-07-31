@@ -1244,7 +1244,7 @@ function debug_repl() {
     try {
       debug_interpret(s);
     } catch (e) {
-      console.log("error: " + e);
+      console.log("Error: " + e);
       if (e.stack !== undefined)
         console.log(e.stack);
     }
@@ -1265,7 +1265,7 @@ function repl() {
       print(as_comment=true);
       console.log();
     } catch (e) {
-      console.log("# error: " + e);
+      console.log("# Error: " + e);
       if (e.stack !== undefined)
         console.log(e.stack);
     }

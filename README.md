@@ -57,11 +57,11 @@ Unquote using the function application operator `.`:
 
 ## Custom data types
 
-Define tagged variant "types" with `data` (they're really just pairs of the form `[tag, values]`):
+Define tagged variant "types" with `data` (they're really just pairs of the form `[tag, values]`).
+e.g. a boolean data type (after this declaration, `true` and `false` will push their corresponding tagged pairs onto the stack):
 ```haskell
 data true | false
 ```
-This automatically binds two constants `true` and `false`.
 
 The `data` declaration also defines two tags of the same name that can be used in pattern matching:
 ```haskell

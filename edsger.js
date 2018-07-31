@@ -161,6 +161,12 @@ function preprocess(s) {
   return new_lines.join("\n");
 }
 
+function preprocess_file(file) {
+  let fs = require("fs");
+  let s = fs.readFileSync(file, "utf-8");
+  console.log(preprocess(s));
+}
+
 // -------------------- parser --------------------
 
 const parse_failed = result => typeof result === "string" || result instanceof String;
@@ -1272,6 +1278,7 @@ switch (process.argv[2]) {
   case "compile": compile_file(process.argv[3], process.argv[4]); break;
   case "run": run_file(process.argv[3]); break;
   case "disassemble": disassemble_file(process.argv[3]); break;
+  case "preprocess": preprocess_file(process.argv[3]); break;
   case "load": interpret_file(process.argv[3]); print(as_comment=true); repl(); break;
   default: break;
 }

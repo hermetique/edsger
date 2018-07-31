@@ -127,3 +127,11 @@ becomes
 1 2 + 2 * 3 + 2 * 4 + 2 * 5 + 2 * 6 + 2 * 7 + 2 * 8 + 2 * 9 + 2 * 10 + 2 *
 # [3560]
 ```
+
+# Whitespace
+
+Edsger is whitespace-sensitive. Most of the rules are adapted from my
+[parenthesizer](https://github.com/johnli0135/parenthesizer),
+with keywords and semicolons taking the place of opening and closing parentheses.
+
+Use `node edsger.js preprocess <src>` to see how semicolons are inferred from indentation.

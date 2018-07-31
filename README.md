@@ -30,6 +30,7 @@ Define functions using `≡` or `==`:
 ```python
 0 tri ≡ 0
 n tri ≡ n [n 1 -] tri + # square brackets are superfluous; just for visual grouping
+
 100 tri
 # [5050]
 ```

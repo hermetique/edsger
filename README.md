@@ -26,6 +26,8 @@ Function application is postfix:
 # ["hello, world"]
 ```
 
+# Functions
+
 Define functions using `≡` or `==`:
 ```python
 0 tri ≡ 0
@@ -53,6 +55,19 @@ Unquote using the function application operator `.`:
 ```python
 1 (1 +) .
 # [2]
+```
+
+Define and apply an anonymous function with `λ` or `\\`:
+```python
+1 2 λ a b → b a
+# [2,1]
+```
+
+Anonymous functions can also have multiple cases:
+```python
+1 λ 0 → "zero"
+    _ → "something else"
+# ["something else"]
 ```
 
 ## Custom data types

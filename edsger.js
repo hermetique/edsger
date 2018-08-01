@@ -408,14 +408,16 @@ const op = {
   IMMINT: 3,     // load 32-bit integer
   IMMFLOAT: 4,   // load double
   QUOTE: 5,      // load quoted program
-  APP: 6,        // run quoted program
-  TRANSFER: 7,   // move top n items onto the symbol stack
-  LOAD: 8,       // push item nth from the top of the symbol stack onto the stack proper
-  DISCARD: 9,    // pop n items from symbol stack
-  DUP: 10,       // duplicate top item
-  SWAP: 11,      // swap top 2 items
+  CLOSURE: 6,    // load closure. format:
+                 //   n[byte] <n variable indices to store in closure> quoted_program
+  APP: 7,        // run quoted program
+  TRANSFER: 8,   // move top n items onto the symbol stack
+  LOAD: 9,       // push item nth from the top of the symbol stack onto the stack proper
+  DISCARD: 10,   // pop n items from symbol stack
+  DUP: 11,       // duplicate top item
+  SWAP: 12,      // swap top 2 items
 
-  CASE: 12,      // case statement. format is:
+  CASE: 13,      // case statement. format is:
   CASE_VAR: 0,   //   cases[byte] arity_per_case[byte] case1 quoted_code case2 quoted_code ..
   CASE_INT: 1,   // where each case is:
   CASE_STR: 2,   //   CASE_VAR[byte] var_id[byte] 
@@ -426,18 +428,19 @@ const op = {
                  // | CASE_WILD[byte]
                  // | tag_id[byte] arity[byte] <arity sub-cases> (for tags <= 255)
                  // var_id of 0 is a wild
+                 // quoted_code is size[int32] <int32 bytes of code>
 
-  MAKE: 13,      // make a tagged object. format is:
+  MAKE: 14,      // make a tagged object. format is:
                  //   tag_id[byte] arity[byte]
                  // pops arity items from stack and pushes [tag_id, popped items]
-  MAKE32: 14,    // like MAKE, but tag_id is an int32
+  MAKE32: 15,    // like MAKE, but tag_id is an int32
                  
-  ADD: 15,       // arithmetic
-  MUL: 16,
-  SUB: 17,
-  DIV: 18,
+  ADD: 16,       // arithmetic
+  MUL: 17,
+  SUB: 18,
+  DIV: 19,
 
-  CAT: 19,     // string manipulation
+  CAT: 20,     // string manipulation
 };
 let n_intrinsics = Object.keys(op).length;
 let words = new Array(n_intrinsics).fill([]);
@@ -577,6 +580,41 @@ function encode_string(s) {
   return to_int32(bytes.length).concat(bytes);
 }
 
+function encode_tagged_value(a) {
+  let [tag, values] = a;
+  let encoded_values = values.map(encode_value).reduce((a, b) => a.concat(b), []);
+  return encoded_values.concat([op.MAKE, tag, values.length]);
+}
+
+function encode_value(a) {
+  if (Number.isInteger(a))
+    return [op.IMMINT].concat(to_int32(a));
+  if (is_num(a))
+    return [op.IMMFLOAT].concat(encode_string(a.toString()));
+  if (!Array.isArray(a))
+    return [op.IMMSTR].concat(encode_string(a.toString()));
+  return encode_tagged_value(a);
+}
+
+//console.log(encode_value([9,[[6,[]],[5,[]]]]));
+
+// [var id] -> bytecode loading the value of each var
+function encode_closure(refs) {
+  // convert data in symbol stack to bytecode
+  let header = refs.map(a => encode_value(symbols[symbols.length - a]))
+                   .reduce((a, b) => a.concat(b));
+
+  // emit lambda-case to bind the copied data
+  let case_vars = [];
+  for (let i = refs.length - 1; i >= 0; --i) // TODO: nasty +1???
+    case_vars = case_vars.concat([op.CASE_VAR, i]);
+
+  // 1 case with arity = refs.length
+  let lambda = [op.CASE, 1, refs.length].concat(case_vars);
+
+  return header.concat(lambda);
+}
+
 function extract_byte(bytes, i=-1) {
   return [bytes[i + 1], i + 1];
 }
@@ -588,14 +626,20 @@ function extract_int32(bytes, i=-1) {
   ];
 }
 
-function extract_values(bytes, i=-1) {
-  let values = [];
-  let len;
-  [len, i] = extract_int32(bytes, i);
-  for (let j = 0; j < len; ++j)
-    values.push(bytes[++i]);
-  return [values, i];
+function extract_values_with(f) {
+  return function(bytes, i=-1) {
+    let values = [];
+    let len;
+    [len, i] = f(bytes, i);
+    //console.log("len =", len);
+    for (let j = 0; j < len; ++j)
+      values.push(bytes[++i]);
+    return [values, i];
+  };
 }
+
+const extract_values = extract_values_with(extract_int32);
+const extract_byte_values = extract_values_with(extract_byte);
 
 function extract_double(bytes, i=-1) {
   let num;
@@ -774,6 +818,13 @@ function disassemble(bytes, indent_by=0) {
       case op.IMMSTR: put("STR "); put(JSON.stringify(get(extract_string))); brk(); break;
       case op.IMMINT: put("INT "); go(extract_int32); brk(); break;
       case op.IMMFLOAT: put("FLOAT "); go(extract_double); brk(); break;
+      case op.CLOSURE: {
+        put("CLOSURE ");
+        const n_vars = get(extract_byte);
+        for (let j = 0; j < n_vars; ++j)
+          put(get(extract_byte) + " ");
+        brk();
+        } break;
       case op.QUOTE:
         put("QUOTE");
         values = get(extract_values);
@@ -894,11 +945,16 @@ function run(bytes) {
       case op.IMMSTR: go(extract_string); break;
       case op.IMMINT: go(extract_int32); break;
       case op.IMMFLOAT: go(extract_double); break;
+      case op.CLOSURE: {
+        let header = encode_closure(get(extract_byte_values));
+        let code = get(extract_values);
+        push(header.concat(to_int32(code.length)).concat(code));
+      } break;
       case op.QUOTE: go(extract_values); break;
       case op.APP: run(item()); break;
-      case op.TRANSFER: n = get(extract_byte); transfer(n); break;
-      case op.LOAD: n = get(extract_byte); load(n); break;
-      case op.DISCARD: n = get(extract_byte); discard(n); break;
+      case op.TRANSFER: { let n = get(extract_byte); transfer(n); } break;
+      case op.LOAD: { let n = get(extract_byte); load(n); } break;
+      case op.DISCARD: { let n = get(extract_byte); discard(n); } break;
       case op.DUP: dup(); break;
       case op.SWAP: swap(); break;
       case op.CASE: i = run_case(bytes, i); break;
@@ -915,6 +971,7 @@ function run(bytes) {
         } else {
           throw "Unknown bytecode instruction " + b;
         }
+        break;
     }
   }
 }
@@ -947,12 +1004,11 @@ function run_file(file, print_stack=true) {
 
 // -------------------- compiler --------------------
 
-// helper: given a stack of environments, convert an identifier to an id
+// helper: given an of environment, convert an identifier to an id
 const to_var_id = (name, env) => {
-  for (let i = env.length - 1; i >= 0; --i) {
-    if (env[i].indexOf(name) !== -1)
-      return env[i].indexOf(name);
-  }
+  for (let i = 0; i < env.length; ++i)
+    if (env[env.length - 1 - i] === name)
+      return i;
   throw "Unbound identifier `" + name + "'";
 }
 
@@ -971,6 +1027,7 @@ function compile_datadef(datadef) {
   return [];
 }
 
+// get all bound variables in a pattern
 function extract_env(pattern) {
   if (!Array.isArray(pattern)) // tag or unescaped variable
     return (pattern in tags) ? [] : [pattern];
@@ -987,6 +1044,45 @@ function extract_env(pattern) {
     return [tail[0]];
   return tail.map(extract_env).reduce(merge, []);
 }
+
+function extract_free_lambda(e, env=[]) {
+  let result = [];
+  for (const c of e.slice(1)) { // for each case
+    let [_, lhs, rhs] = c;
+    result = result.concat(extract_free(rhs, env.concat(extract_env(lhs))));
+  }
+  return result;
+}
+
+// get all free variables in an expression
+function extract_free(expr, env=[]) {
+  let result = [];
+  for (const e of expr.slice(1)) {
+    if (Array.isArray(e)) {
+      let head = e[0];
+      let tail = e.slice(1);
+      switch (head) {
+        //case "where": result = result.concat(extract_free_where(e, env)); break;
+        case "lambda": result = result.concat(extract_free_lambda(e, env)); break;
+        case "expr": case "quote": result = result.concat(extract_free(e, env)); break;
+        case "int": break;
+        case "num": break;
+        case "str": break;
+        case "var":
+          if (!is_bound(tail[0], env))
+            result.push(tail[0]);
+          break;
+        default: throw "Bad AST node `" + head + "'";
+      }
+    } else if (!(e in word_map) && !is_bound(e, env)) // if not a word, treat as unescaped variable
+        result.push(e);
+  }
+  return result;
+}
+
+// let s = "do a λ c a → c a";
+// console.log(JSON.stringify(parse(lex(preprocess(s)))));
+// console.log(extract_free(parse(lex(preprocess(s)))[0]));
 
 function compile_pattern(pattern, env=[]) {
   let result = [];
@@ -1052,7 +1148,7 @@ function compile_pattern(pattern, env=[]) {
 }
 
 function compile_case(pattern, expr, env=[]) {
-  env = env.concat([extract_env(pattern)]);
+  env = env.concat(extract_env(pattern));
   let [compiled_pattern, arity] = compile_pattern(pattern, env);
   let compiled_expr = compile_expr(expr, env);
   let expr_header = to_int32(compiled_expr.length);
@@ -1084,8 +1180,36 @@ function compile_lambda(lambda, env=[]) {
 }
 
 function compile_quote(quote, env=[]) {
-  let bytes = compile(quote.slice(1), env);
-  return [op.QUOTE].concat(to_int32(bytes.length)).concat(bytes);
+  let quoted = ["expr"].concat(quote.slice(1));
+  let free = extract_free(quoted);
+  //console.log("quoted =", JSON.stringify(quoted));
+  //console.log("free =", JSON.stringify(free));
+  //console.log("env =", JSON.stringify(env));
+
+  // check for unbound identifiers
+  for (const a of free)
+    if (!is_bound(a, env))
+      throw "Unbound variable `" + a + "'";
+
+  // if no free identifiers, just use ordinary quote
+  if (free.length === 0) {
+    let bytes = compile_expr(quoted, env);
+    return [op.QUOTE].concat(to_int32(bytes.length)).concat(bytes);
+  }
+
+  // otherwise, construct closure
+  let closure_ids = free.map(a => to_var_id(a, env) + 1) // TODO: nasty +1
+  //console.log("closure_ids =", closure_ids);
+
+  // compile the expr, pretending the closure is the whole environment
+  let bytes = compile_expr(quoted, free);
+
+  let header = [op.CLOSURE, closure_ids.length].concat(closure_ids);
+  //console.log("header =", JSON.stringify(header));
+  //console.log("bytes =", JSON.stringify(bytes));
+
+  return header.concat(to_int32(bytes.length)).concat(bytes);
+
 }
 
 function compile_expr(expr, env=[]) {
@@ -1100,7 +1224,7 @@ function compile_expr(expr, env=[]) {
         case "int": result = result.concat([op.IMMINT].concat(to_int32(tail[0]))); break;
         case "num": result = result.concat([op.IMMFLOAT].concat(encode_string(tail[0].toString()))); break;
         case "str": result = result.concat([op.IMMSTR].concat(encode_string(tail[0]))); break;
-        case "var": result = result.concat([op.LOAD, to_var_id(tail[0], env) + 1]); break;
+        case "var": result = result.concat([op.LOAD, to_var_id(tail[0], env) + 1]); break; // TODO: nasty +1
         case "quote": result = result.concat(compile_quote(e, env)); break;
         case "expr": result = result.concat(compile_expr(e, env)); break;
         default: throw "Bad AST node `" + head + "'";
@@ -1110,7 +1234,7 @@ function compile_expr(expr, env=[]) {
         if (!is_bound(e, env))
           throw "Unbound identifier `" + e + "'";
         else {
-          result = result.concat([op.LOAD, to_var_id(e, env) + 1]);
+          result = result.concat([op.LOAD, to_var_id(e, env) + 1]); // TODO: nasty +1
           continue;
         }
       }

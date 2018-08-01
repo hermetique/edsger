@@ -1,3 +1,16 @@
+# basic combinators
+
+a b instead ≡ b
+
+a del ≡
+
+a dup ≡ a a
+
+a b swap ≡ b a
+
+f 1 rep ≡ f .
+f n rep ≡ f . f n 1 - rep
+
 # data types
 
 data true | false
@@ -25,15 +38,24 @@ a right f map ≡ a f . right
 nil f map ≡ nil
 a b cons f map ≡ a f map b f . cons
 
-# basic combinators
+0 even? ≡ 1 odd? ≡ true
+1 even? ≡ 0 odd? ≡ false
+a even? ≡ a 1 - odd?
+a odd? ≡ a 1 - even?
 
-a b instead ≡ b
+# conditionals
 
-a del ≡
+true b c ite ≡ b .
+false b c ite ≡ c .
 
-a dup ≡ a a
+a b when ≡ a b () ite
+a b unless ≡ a () b ite
 
-a b swap ≡ b a
+# filter
 
-f 1 rep ≡ f .
-f n rep ≡ f . f [n 1 -] rep
+nil f filter ≡ nil
+a b cons f filter ≡
+  a f filter b f .
+  λ true → b cons
+    false →
+  # a f filter b f . (b cons) () ite

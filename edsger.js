@@ -138,7 +138,7 @@ function preprocess(s) {
       else if (token === terminator)
         pop();
       else switch (token) {
-        case "λ": case "\\": case "→": case "->": case "data": case "import":
+        case "λ": case "\\": case "→": case "->": case "data": case "import": case "do":
           stack.push([false, col + indent, false]);
           break;
         case "where":
@@ -340,6 +340,10 @@ const simple_statement = rec_expr.terminated_by(exact(terminator)).bind(expr =>
                          pure(["expr"].concat(expr))).label("simple statement");
 const statement = where_clause.or(simple_statement).label("statement");
 
+// do block
+const do_block = exact("do").right(rec_expr.terminated_by(exact(terminator))).bind(expr =>
+                 pure(["expr"].concat(expr)));
+
 // lambda block
 const lambda_char = exact("λ").or(exact("\\"));
 const arrow = exact("→").or(exact("->"));
@@ -387,7 +391,7 @@ const collapse = result => {
 }
 const parse = tokens => collapse(definition.or(import_statement)
                                            .or(datadef)
-                                           .or(expression)
+                                           .or(do_block)
                                            .many()
                                            .parse(tokens));
 
@@ -1096,7 +1100,8 @@ function compile_expr(expr, env=[]) {
         case "str": result = result.concat([op.IMMSTR].concat(encode_string(tail[0]))); break;
         case "var": result = result.concat([op.LOAD, to_var_id(tail[0], env) + 1]); break;
         case "quote": result = result.concat(compile_quote(e, env)); break;
-        default: throw "bad AST node `" + head + "'";
+        case "expr": result = result.concat(compile_expr(e, env)); break;
+        default: throw "Bad AST node `" + head + "'";
       }
     } else {
       if (!(e in word_map)) { // if not a word, treat as unescaped variable
@@ -1190,7 +1195,6 @@ function compile_words() {
 function compile_file(src, dest) {
   let fs = require("fs");
   let s = fs.readFileSync(src, "utf-8");
-  //console.log(JSON.stringify(parse(lex(preprocess(s)))));
   let bytes = compile(parse(lex(preprocess(s))));
   let compiled_words = compile_words();
   let header = to_int32(compiled_words.length);

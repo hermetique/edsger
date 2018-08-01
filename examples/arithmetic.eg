@@ -19,6 +19,7 @@ n fib ≡ 1 1 n fib' instead where
 n f demo ≡ [n 1 -] f demo n f .
 
 # some computations
-20 (tri) demo
-20 (fib) demo
-20 (fac) demo
+do
+  20 (tri) demo
+  20 (fib) demo
+  20 (fac) demo

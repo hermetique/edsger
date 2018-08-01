@@ -5,7 +5,7 @@ if exists("b:current_syntax")
   finish
 end
 
-syn keyword egkeywords data where import
+syn keyword egkeywords data where import do
 syn match egvariables "\v'[^ ]+\s|'[^ ]+$"
 syn match egcomment "# .*$"
 

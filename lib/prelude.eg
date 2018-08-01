@@ -1,0 +1,39 @@
+# data types
+
+data true | false
+data nothing | _ itself
+data _ left | _ right
+data nil | tail head cons
+
+# pretty printer
+
+true show ≡ "true"
+false show ≡ "false"
+nothing show ≡ "nothing"
+a itself show ≡ a show " itself" ++
+a left show ≡ a show " left" ++
+a right show ≡ a show " right" ++
+nil show ≡ "[]"
+a b cons show ≡ a show ":" ++ b show ++
+
+# map
+
+nothing f map ≡ nothing
+a itself f map ≡ a f . itself
+a left f map ≡ a left
+a right f map ≡ a f . right
+nil f map ≡ nil
+a b cons f map ≡ a f map b f . cons
+
+# basic combinators
+
+a b instead ≡ b
+
+a del ≡
+
+a dup ≡ a a
+
+a b swap ≡ b a
+
+f 1 rep ≡ f .
+f n rep ≡ f . f [n 1 -] rep

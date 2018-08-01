@@ -38,17 +38,13 @@ a right f map ≡ a f . right
 nil f map ≡ nil
 a b cons f map ≡ a f map b f . cons
 
-0 even? ≡ 1 odd? ≡ true
-1 even? ≡ 0 odd? ≡ false
-a even? ≡ a 1 - odd?
-a odd? ≡ a 1 - even?
-
 # conditionals
 
 true b c ite ≡ b .
 false b c ite ≡ c .
 
 a b when ≡ a b () ite
+
 a b unless ≡ a () b ite
 
 # filter

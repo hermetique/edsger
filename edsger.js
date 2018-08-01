@@ -1258,6 +1258,7 @@ function debug_repl() {
 function repl() {
   const prefix = "# ";
 
+  process.stdout.write(cursor);
   process.stdin.resume();
   process.stdin.setEncoding("utf8");
   let util = require("util");
@@ -1268,6 +1269,7 @@ function repl() {
       interpret(s);
       print(as_comment=true);
       console.log();
+      process.stdout.write(cursor);
     } catch (e) {
       console.log("# Error: " + e);
       if (e.stack !== undefined)

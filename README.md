@@ -14,15 +14,15 @@ Useful scripts in this directory:
 # line comment
 ```
 
-Simple values (string and numeric literals) are pushed onto the stack:
+Simple values (string and numeric literals) are just pushed onto the stack.
 ```python
-1 2 3
+do 1 2 3
 # [1,2,3]
 ```
 
 Function application is postfix:
 ```bash
-"hello, " "world" ++
+do "hello, " "world" ++
 # ["hello, world"]
 ```
 
@@ -33,7 +33,7 @@ Define functions using `≡` or `==`:
 0 tri ≡ 0
 n tri ≡ n [n 1 -] tri + # square brackets are superfluous; just for visual grouping
 
-100 tri
+do 100 tri
 # [5050]
 ```
 
@@ -47,26 +47,26 @@ n odd? ≡ n 1 - even?
 
 Quote by wrapping code in parentheses (the output shown is the compiled bytecode):
 ```python
-(1 +)
+do (1 +)
 # [[3,0,0,0,1,15]]
 ```
 
 Unquote using the function application operator `.`:
 ```python
-1 (1 +) .
+do 1 (1 +) .
 # [2]
 ```
 
 Define and apply an anonymous function with `λ` or `\` and `→` or `->`:
 ```python
-1 2 λ a b → b a
+do 1 2 λ a b → b a
 # [2,1]
 ```
 
 Anonymous functions can also have multiple cases:
 ```python
-1 λ 0 → "zero"
-    _ → "something else"
+do 1 λ 0 → "zero"
+       _ → "something else"
 # ["something else"]
 ```
 
@@ -111,20 +111,20 @@ n fib ≡ 1 1 n fib' instead where
 A `{lhs | rhs}` comprehension intersperses `rhs` between all but first two items of `lhs`. For example,
 ```haskell
 data nil | tail head cons
-{nil 1 2 3 4 5 6 7 8 9 10 | cons}
+do {nil 1 2 3 4 5 6 7 8 9 10 | cons}
 ```
 becomes
 ```python
-nil 1 cons 2 cons 3 cons 4 cons 5 cons 6 cons 7 cons 8 cons 9 cons 10 cons
+do nil 1 cons 2 cons 3 cons 4 cons 5 cons 6 cons 7 cons 8 cons 9 cons 10 cons
 # [a list from 1 to 10]
 ```
 and
 ```python
-{1 2 3 4 5 6 7 8 9 10 | + 2 *}
+do {1 2 3 4 5 6 7 8 9 10 | + 2 *}
 ```
 becomes
 ```python
-1 2 + 2 * 3 + 2 * 4 + 2 * 5 + 2 * 6 + 2 * 7 + 2 * 8 + 2 * 9 + 2 * 10 + 2 *
+do 1 2 + 2 * 3 + 2 * 4 + 2 * 5 + 2 * 6 + 2 * 7 + 2 * 8 + 2 * 9 + 2 * 10 + 2 *
 # [3560]
 ```
 

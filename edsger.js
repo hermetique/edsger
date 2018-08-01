@@ -387,6 +387,8 @@ const import_statement = exact("import").right(one.terminated_by(exact(terminato
 const collapse = result => {
   if (parse_failed(result))
     throw result;
+  if (result[0].length !== 0)
+    throw "Couldn't completely parse input";
   return result[1];
 }
 const parse = tokens => collapse(definition.or(import_statement)
@@ -1272,6 +1274,7 @@ function repl() {
       console.log("# Error: " + e);
       if (e.stack !== undefined)
         console.log(e.stack);
+      console.log();
     }
   });
 }

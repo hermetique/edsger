@@ -10,12 +10,12 @@ Useful scripts in this directory:
 
 ## Basics
 
-```python
+```bash
 # line comment
 ```
 
 Simple values (string and numeric literals) are just pushed onto the stack.
-```python
+```bash
 do 1 2 3
 # [1,2,3]
 ```
@@ -29,7 +29,7 @@ do "hello, " "world" ++
 ## Functions
 
 Define functions using `≡` or `==`:
-```python
+```bash
 0 tri ≡ 0
 n tri ≡ n [n 1 -] tri + # square brackets are superfluous; just for visual grouping
 
@@ -46,25 +46,25 @@ n odd? ≡ n 1 - even?
 ```
 
 Quote by wrapping code in parentheses (the output shown is the compiled bytecode):
-```python
+```bash
 do (1 +)
 # [[3,0,0,0,1,15]]
 ```
 
 Unquote using the function application operator `.`:
-```python
+```bash
 do 1 (1 +) .
 # [2]
 ```
 
 Define and apply an anonymous function with `λ` or `\` and `→` or `->`:
-```python
+```bash
 do 1 2 λ a b → b a
 # [2,1]
 ```
 
 Anonymous functions can also have multiple cases:
-```python
+```bash
 do 1 λ 0 → "zero"
        _ → "something else"
 # ["something else"]
@@ -114,16 +114,16 @@ data nil | tail head cons
 do {nil 1 2 3 4 5 6 7 8 9 10 | cons}
 ```
 becomes
-```python
+```bash
 do nil 1 cons 2 cons 3 cons 4 cons 5 cons 6 cons 7 cons 8 cons 9 cons 10 cons
 # [a list from 1 to 10]
 ```
 and
-```python
+```bash
 do {1 2 3 4 5 6 7 8 9 10 | + 2 *}
 ```
 becomes
-```python
+```bash
 do 1 2 + 2 * 3 + 2 * 4 + 2 * 5 + 2 * 6 + 2 * 7 + 2 * 8 + 2 * 9 + 2 * 10 + 2 *
 # [3560]
 ```

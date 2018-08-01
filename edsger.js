@@ -1,5 +1,6 @@
 // -------------------- lexer + preprocessor --------------------
 
+const path = process.argv[2];
 const is_num = s => !isNaN(s);
 const is_space = c => /\s/.test(c);
 const is_open_brace = c => c.length === 1 && /\[|\{|\(/.test(c);
@@ -1287,7 +1288,7 @@ function compile_where(ast, env=[]) {
 
 function compile_import(ast, env=[]) {
   for (const im of ast.slice(1))
-    interpret_file(im + ".eg");
+    interpret_file(im + ".eg", search_path=true);
   return [];
 }
 
@@ -1343,9 +1344,17 @@ function interpret(s) {
   return bytes;
 }
 
-function interpret_file(src) {
+function interpret_file(src, search_path=false) {
   let fs = require("fs");
-  let s = fs.readFileSync(src, "utf-8");
+  let s;
+  try {
+    s = fs.readFileSync(src, "utf-8");
+  } catch (e) {
+    if (search_path)
+      s = fs.readFileSync(path + "/" + src, "utf-8");
+    else
+      throw e;
+  }
   interpret(s);
 }
 
@@ -1403,14 +1412,14 @@ function repl() {
   });
 }
 
-switch (process.argv[2]) {
+switch (process.argv[3]) {
   case "debug_repl": debug_repl(node=true); break;
   case "repl": repl(); break;
-  case "compile": compile_file(process.argv[3], process.argv[4]); break;
-  case "run": run_file(process.argv[3]); break;
-  case "disassemble": disassemble_file(process.argv[3]); break;
-  case "preprocess": preprocess_file(process.argv[3]); break;
-  case "load": interpret_file(process.argv[3]); print(as_comment=true); repl(); break;
+  case "compile": compile_file(process.argv[4], process.argv[5]); break;
+  case "run": run_file(process.argv[4]); break;
+  case "disassemble": disassemble_file(process.argv[4]); break;
+  case "preprocess": preprocess_file(process.argv[4]); break;
+  case "load": interpret_file(process.argv[4]); print(as_comment=true); repl(); break;
   default: break;
 }
 

@@ -3,10 +3,10 @@
 Concatenative programming language.
 
 Useful scripts in this directory:
-- `egi`: interactive repl (= `node edsger.js repl`)
-- `egc <src> <dst>`: compile `<src>` to bytecode (= `node edsger.js compile <src> <dst>`)
-- `egd <src>`: disassemble bytecode (= `node edsger.js disassemble <src>`)
-- `eg <src>`: run compiled bytecode (= `node edsger.js run <src>`)
+- `egi`: interactive repl (= `node edsger.js /path/to/lib/directory repl`)
+- `egc <src> <dst>`: compile `<src>` to bytecode (= `node edsger.js /path/to/lib/directory compile <src> <dst>`)
+- `egd <src>`: disassemble bytecode (= `node edsger.js /path/to/lib/directory disassemble <src>`)
+- `eg <src>`: run compiled bytecode (= `node edsger.js /path/to/lib/directory run <src>`)
 
 ## Basics
 

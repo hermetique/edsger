@@ -8,7 +8,7 @@ Useful scripts in this directory:
 - `egd <src>`: disassemble bytecode (= `node edsger.js disassemble <src>`)
 - `eg <src>`: run compiled bytecode (= `node edsger.js run <src>`)
 
-# Basics
+## Basics
 
 ```python
 # line comment
@@ -26,7 +26,7 @@ Function application is postfix:
 # ["hello, world"]
 ```
 
-# Functions
+## Functions
 
 Define functions using `≡` or `==`:
 ```python
@@ -72,7 +72,7 @@ Anonymous functions can also have multiple cases:
 
 ## Custom data types
 
-Define tagged variant "types" with `data` (they're really just pairs of the form `[tag, values]`).
+Define tagged variant "types" with `data` (internally they're just pairs of the form `[tag, values]`).
 
 e.g. a boolean data type (after this declaration, `true` and `false` will push their corresponding tagged pairs onto the stack):
 ```haskell
@@ -128,7 +128,7 @@ becomes
 # [3560]
 ```
 
-# Whitespace
+## Whitespace
 
 Edsger is whitespace-sensitive. Most of the rules are adapted from my
 [parenthesizer](https://github.com/johnli0135/parenthesizer),

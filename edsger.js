@@ -767,7 +767,7 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   // integers
   if (pattern[0] === "int") {
     let num = parseInt(pattern[1]);
-    if (!is_num(item) || num !== parseInt(item))
+    if (!is_num(item) || !Number.isInteger(parseFloat(item)) || num !== parseInt(item))
       return null;
     return accu;
   }
@@ -980,7 +980,7 @@ function run_case(bytes, i) {
     //console.log("got pattern =", JSON.stringify(pattern), "i =", i,"extracting values...");
     const action = get(extract_values);
     const match = pattern_matches(pattern);
-    //console.log("pattern =", JSON.stringify(pattern), "action =", disassemble(action), "match =", match,
+    //console.log("pattern =", pattern2str(pattern), "action =", disassemble(action), "match =", match,
     //            "stack =", JSON.stringify(stack));
     if (!done && match !== null) {
       //console.log("before apttern transfer, symbosl =", JSON.stringify(symbols));
@@ -1510,8 +1510,13 @@ function pattern2str(pattern) {
     return "(numvar " + pattern[1] + ")";
 
   // tags are just numbers > 3
-  if (!isNaN(pattern[0]))
-    return "(" + pattern[0] + pattern[1].map(a => " " + pattern2str(a)).join("") + ")";
+  if (!isNaN(pattern[0])) {
+    let tag = parseInt(pattern[0]);
+    for (const t in tags)
+      if (tag === tags[t].id)
+        tag = t;
+    return "(" + tag.toString() + pattern[1].map(a => " " + pattern2str(a)).join("") + ")";
+  }
 
   // array of subpatterns
   return pattern.map(pattern2str).join(" ");

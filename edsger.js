@@ -790,7 +790,7 @@ function pattern_matches(pattern, item=undefined, accu={}) {
 
   // integer variables
   if (pattern[0] === "intvar") {
-    if (!is_num(item))
+    if (!is_num(item) || !Number.isInteger(parseFloat(item)))
       return null;
     accu[pattern[1]] = parseInt(item);
     return accu;
@@ -901,7 +901,6 @@ function disassemble(bytes, indent_by=0) {
         let cases = [];
         for (let j = 0; j < n_cases; ++j) {
           const pattern = get(extract_pattern(arity));
-          console.log("got pattern =", pattern.length);
           const action = get(extract_values);
           result = result.concat([" ".repeat(indent_width) + JSON.stringify(pattern) + " → "])
                          .concat(disassemble(action, indent_by + indent_width));
@@ -972,11 +971,11 @@ function run_case(bytes, i) {
   let done = false;
   for (let j = 0; j < n_cases; ++j) {
     const pattern = get(extract_pattern(arity));
-    console.log("got pattern =", JSON.stringify(pattern), "i =", i,"extracting values...");
+    //console.log("got pattern =", JSON.stringify(pattern), "i =", i,"extracting values...");
     const action = get(extract_values);
     const match = pattern_matches(pattern);
-    console.log("pattern =", JSON.stringify(pattern), "action =", disassemble(action), "match =", match,
-                "stack =", JSON.stringify(stack));
+    //console.log("pattern =", JSON.stringify(pattern), "action =", disassemble(action), "match =", match,
+    //            "stack =", JSON.stringify(stack));
     if (!done && match !== null) {
       //console.log("before apttern transfer, symbosl =", JSON.stringify(symbols));
       pattern_transfer(match);
@@ -1034,7 +1033,7 @@ function run(bytes) {
       case op.MUL: push(num() * num()); break;
       case op.SUB: { let a = num(); let b = num(); push(b - a) } break;
       case op.DIV: { let a = num(); let b = num(); push(b / a) } break;
-      case op.CAT: { let a = item(); let b = item(); push([b, a].join("")) } break;
+      case op.CAT: { let a = item(); let b = item(); console.log("b =", b, "a =", a); push(b + a) } break;
       default:
         if (b in words) {
           run(words[b]);
@@ -1106,7 +1105,9 @@ function compile_datadef(datadef) {
 // get all bound variables in a pattern
 function extract_env(pattern) {
   if (!Array.isArray(pattern)) // tag or unescaped variable
-    return (pattern in tags) ? [] : [pattern];
+    return (pattern in tags) || ["int", "num", "str"].includes(pattern)
+             ? []
+             : [pattern];
   let head = pattern[0];
   if (["int", "num", "str", "wild"].includes(head))
     return [];

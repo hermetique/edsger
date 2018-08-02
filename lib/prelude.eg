@@ -23,6 +23,9 @@ data nil | tail head cons
 
 # pretty printer
 
+a int show ≡ a "" ++
+a num show ≡ a "" ++
+a str show ≡ a
 true show ≡ "true"
 false show ≡ "false"
 nothing show ≡ "nothing"

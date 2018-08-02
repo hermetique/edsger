@@ -70,8 +70,4 @@ a b unless ≡ a () b ite
 # filter
 
 nil f filter ≡ nil
-a b cons f filter ≡
-  a f filter b f .
-  λ true → b cons
-    false →
-  # a f filter b f . (b cons) () ite
+a b cons f filter ≡ a f filter b f . (b cons) when

@@ -289,6 +289,7 @@ const term = one.guard(s => s !== terminator && s !== "where").bind(s => {
         switch (c) {
           case "n": result += "\n"; break;
           case "t": result += "\t"; break;
+          case "\\": result += "\\"; break;
         }
         escaping = false;
       } else if (c === "\\")
@@ -1370,9 +1371,10 @@ function interpret_file(src, search_path=false) {
 }
 
 function debug_interpret(s) {
-  console.log("---------- desguared ----------");
+  console.log("---------- desugared ----------");
   console.log(preprocess(s));
   console.log("---------- ast ----------");
+  //console.log(JSON.stringify(lex(preprocess(s))));
   console.log(JSON.stringify(parse(lex(preprocess(s)))));
   console.log("---------- bytecode ----------");
   let bytecode = interpret(s);
@@ -1448,3 +1450,5 @@ switch (process.argv[3]) {
 ////console.log(where_clause.parse(lex(preprocess(s))));
 //debug_interpret(s);
 //print(stack);
+
+//console.log(parse(lex(preprocess(`do "\\test" "abc" ++`))));

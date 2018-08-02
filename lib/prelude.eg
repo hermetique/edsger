@@ -11,10 +11,10 @@ a dup ≡ a a
 a b swap ≡ b a
 
 f 1 rep ≡ f .
-f n rep ≡ f . f n 1 - rep
+f n integer rep ≡ f . f n 1 - rep
 
 0 base ind nat-rec ≡ base
-n base ind nat-rec ≡ [n 1 -] base ind nat-rec n ind .
+n integer base ind nat-rec ≡ [n 1 -] base ind nat-rec n ind .
 
 # data types
 

@@ -116,7 +116,7 @@ function preprocess(s) {
   const hard_terminate = () => {
     while (true) {
       if (stack.length === 0)
-        throw "Unbalanced parenthesis";
+        throw ["Unbalanced parenthesis"];
       const [is_hard, level, is_eq] = stack.pop();
       if (is_hard)
         break;
@@ -170,7 +170,7 @@ function preprocess_file(file) {
   try {
     s = fs.readFileSync(file, "utf-8");
   } catch (e) {
-    console.log("Error: Couldn't open file `" + file + "'");
+    console.log(error2str(["Error: Couldn't open file `" + file + "'"]));
     process.exit();
   }
   console.log(preprocess(s));
@@ -401,10 +401,10 @@ const import_statement = exact("import").right(one.terminated_by(exact(terminato
 const collapse = (parser, tokens, repl_mode=false) => {
   let result = parser.parse(tokens);
   if (parse_failed(result))
-    throw result;
+    throw [result];
   if (result[0].length !== 0) {
     if (!repl_mode)
-      throw "Couldn't completely parse input";
+      throw ["Couldn't completely parse input"];
     return collapse(parser, ["do"].concat(tokens).concat([";"]), repl_mode=false);
   }
   return result[1];
@@ -488,7 +488,7 @@ function bind_tags(arr) {
   for (const entry of arr)
     for (const ident of entry)
       if (ident in word_map)
-        throw "Enum identifier `" + ident + "' is already bound";
+        throw ["Enum identifier `" + ident + "' is already bound"];
   const already_bound = Object.keys(tags).length + 9; // VAR, INT, STR, FLOAT, TAG32, etc, are reserved
   for (let i = 0; i < arr.length; ++i) {
     const entry = arr[i];
@@ -555,7 +555,7 @@ function bind(name, bytes) {
       let new_cases = bytes[1];
       let new_arity = bytes[2];
       if (new_arity !== arity) // the new case block needs to have compatible cases
-        throw "Pre-existing definition has different number of arguments";
+        throw ["Pre-existing definition has different number of arguments"];
       words[op][1] += new_cases;
       words[op] = words[op].concat(bytes.slice(3)); // slice off op.CASE, cases, arity-per-case
                                                     // and just append the new cases
@@ -667,7 +667,7 @@ function extract_double(bytes, i=-1) {
   if (is_num(num))
     return [parseFloat(num), i];
   else
-    throw "Tried to load `" + num + "' as a floating point number";
+    throw ["Tried to load `" + num + "' as a floating point number"];
 }
 
 function extract_instr(bytes, i=-1) {
@@ -907,7 +907,7 @@ function disassemble(bytes, indent_by=0) {
         for (let j = 0; j < n_cases; ++j) {
           const pattern = get(extract_pattern(arity));
           const action = get(extract_values);
-          result = result.concat([" ".repeat(indent_width) + JSON.stringify(pattern) + " → "])
+          result = result.concat([" ".repeat(indent_width) + pattern2str(pattern) + " → "])
                          .concat(disassemble(action, indent_by + indent_width));
         }
         brk();
@@ -948,7 +948,7 @@ function disassemble_file(file) {
   try {
     buffer = fs.readFileSync(file);
   } catch (e) {
-    console.log("Error: Couldn't open file `" + file + "'");
+    console.log(error2str(["Error: Couldn't open file `" + file + "'"]));
     process.exit();
   }
   let bytes = Array.from(buffer);
@@ -972,10 +972,11 @@ function run_case(bytes, i) {
 
   const n_cases = get(extract_byte);
   const arity = get(extract_byte);
-  let cases = [];
+  let patterns = [];
   let done = false;
   for (let j = 0; j < n_cases; ++j) {
     const pattern = get(extract_pattern(arity));
+    patterns.push(pattern);
     //console.log("got pattern =", JSON.stringify(pattern), "i =", i,"extracting values...");
     const action = get(extract_values);
     const match = pattern_matches(pattern);
@@ -997,7 +998,7 @@ function run_case(bytes, i) {
   }
 
   if (!done)
-    throw "Non-exhaustive patterns";
+    throw ["Pattern match failed. Cases considered:", patterns.map(pattern2str)];
 
   return i;
 }
@@ -1018,7 +1019,7 @@ function run(bytes) {
     const num = () => parseFloat(pop()[0]);
     const item = () => pop()[0];
     switch (b) {
-      case op.FAIL: throw pop(); break;
+      case op.FAIL: throw [pop()]; break;
       case op.IMMSTR: go(extract_string); break;
       case op.IMMINT: go(extract_int32); break;
       case op.IMMFLOAT: go(extract_double); break;
@@ -1046,7 +1047,7 @@ function run(bytes) {
         if (b in words) {
           run(words[b]);
         } else {
-          throw "Unknown bytecode instruction " + b;
+          throw ["Unknown bytecode instruction " + b];
         }
         break;
     }
@@ -1072,7 +1073,7 @@ function run_file(file, print_stack=true) {
   try {
     buffer = fs.readFileSync(file);
   } catch (e) {
-    console.log("Error: Couldn't open file `" + file + "'");
+    console.log(error2str(["Error: Couldn't open file `" + file + "'"]));
     process.exit();
   }
   let bytes = Array.from(buffer);
@@ -1092,7 +1093,7 @@ const to_var_id = (name, env) => {
   for (let i = 0; i < env.length; ++i)
     if (env[env.length - 1 - i] === name)
       return i;
-  throw "Unbound identifier `" + name + "'";
+  throw ["Unbound identifier `" + name + "'"];
 }
 
 // helper: check if variable is in an environment
@@ -1160,7 +1161,7 @@ function extract_free(expr, env=[]) {
           if (!is_bound(tail[0], env))
             result.push(tail[0]);
           break;
-        default: throw "Bad AST node `" + head + "'";
+        default: throw ["Bad AST node `" + head + "'"];
       }
     } else if (!(e in word_map) && !is_bound(e, env)) // if not a word, treat as unescaped variable
         result.push(e);
@@ -1182,10 +1183,10 @@ function compile_pattern(pattern, env=[]) {
 
       if (tag in primitive_tags) { // primitive tags
         if (result.length === 0)
-          throw "Bad pattern: primitive tag `" + tag + "' expects a variable but got nothing";
+          throw ["Bad pattern: primitive tag `" + tag + "' expects a variable but got nothing"];
         const arg = result.pop();
         if (!Array.isArray(arg) || arg[0] !== op.CASE_VAR)
-          throw "Bad pattern: primitive tag `" + tag + "' expects a variable but got " + arg; // TODO: pretty-print arg
+          throw ["Bad pattern: primitive tag `" + tag + "' expects a variable but got " + arg]; // TODO: pretty-print arg
         result.push([primitive_tags[tag], arg[1]]);
       }
       
@@ -1197,9 +1198,9 @@ function compile_pattern(pattern, env=[]) {
       else {
         const { id, arity } = tags[tag];
         if (result.length < arity)
-          throw "Bad pattern: tag `" + tag + "' expects " + arity
+          throw ["Bad pattern: tag `" + tag + "' expects " + arity
                                      + " arguments but is applied to "
-                                     + result.length;
+                                     + result.length];
 
         const compiled_id = id < 256 ? [id] : [op.CASE_TAG32].concat(to_int32(id));
         const args = arity === 0 ? [] : result.splice(-arity);
@@ -1281,7 +1282,7 @@ function compile_lambda(lambda, env=[]) {
     if (arity === undefined)
       arity = new_arity;
     else if (arity !== new_arity)
-      throw "Cases have mismatching numbers of arguments";
+      throw ["Cases have mismatching numbers of arguments"];
 
     result = result.concat(compiled_case);
   }
@@ -1303,7 +1304,7 @@ function compile_quote(quote, env=[]) {
   // check for unbound identifiers
   for (const a of free)
     if (!is_bound(a, env))
-      throw "Unbound variable `" + a + "'";
+      throw ["Unbound variable `" + a + "'"];
 
   // if no free identifiers, just use ordinary quote
   if (free.length === 0) {
@@ -1332,7 +1333,7 @@ function compile_bytecode(e, env) {
   let bytes = e.slice(1).map(a => parseFloat(a));
   let invalid = bytes.filter(a => a > 255 || !Number.isInteger(a)).length;
   if (invalid > 0)
-    throw "Invalid bytecode instruction `" + invalid[0] + "'";
+    throw ["Invalid bytecode instruction `" + invalid[0] + "'"];
   return bytes;
 }
 
@@ -1352,12 +1353,12 @@ function compile_expr(expr, env=[]) {
         case "quote": result = result.concat(compile_quote(e, env)); break;
         case "expr": result = result.concat(compile_expr(e, env)); break;
         case "bytecode": result = result.concat(compile_bytecode(e, env)); break;
-        default: throw "Bad AST node `" + head + "'";
+        default: throw ["Bad AST node `" + head + "'"];
       }
     } else {
       if (!(e in word_map)) { // if not a word, treat as unescaped variable
         if (!is_bound(e, env))
-          throw "Unbound identifier `" + e + "'";
+          throw ["Unbound identifier `" + e + "'"];
         else {
           result = result.concat([op.LOAD, to_var_id(e, env) + 1]); // TODO: nasty +1
           continue;
@@ -1454,7 +1455,7 @@ function compile_file(src, dest) {
   try {
     s = fs.readFileSync(src, "utf-8");
   } catch (e) {
-    console.log("Error: Couldn't open file `" + src + "'");
+    console.log(error2str(["Error: Couldn't open file `" + src + "'"]));
     process.exit();
   }
   let bytes = compile(parse(lex(preprocess(s))));
@@ -1464,12 +1465,73 @@ function compile_file(src, dest) {
   try {
     fs.writeFileSync(dest, Uint8Array.from(contents));
   } catch (e) {
-    console.log("Error: Couldn't write to `" + dest + "'");
+    console.log(error2str(["Error: Couldn't open file `" + dest + "'"]));
     process.exit();
   }
 }
 
 // -------------------- interpreter/repl --------------------
+
+// pretty-print a pattern
+function pattern2str(pattern) {
+  if (pattern.length === 0)
+    return "()";
+
+  // variables match anything
+  if (pattern[0] === "var")
+    return "(var " + pattern[1] + ")";
+
+  // integers
+  if (pattern[0] === "int")
+    return "(int " + pattern[1] + ")";
+
+  // strings
+  if (pattern[0] === "str")
+    return "(str " + pattern[1] + ")";
+
+  // floats
+  if (pattern[0] === "num")
+    return "(num " + pattern[1] + ")";
+
+  // wilds
+  if (pattern[0] === "wild")
+    return "_";
+
+  // integer variables
+  if (pattern[0] === "intvar")
+    return "(intvar " + pattern[1] + ")";
+
+  // string variables
+  if (pattern[0] === "strvar")
+    return "(strvar " + pattern[1] + ")";
+
+  // float variables
+  if (pattern[0] === "numvar")
+    return "(numvar " + pattern[1] + ")";
+
+  // tags are just numbers > 3
+  if (!isNaN(pattern[0]))
+    return "(" + pattern[0] + pattern[1].map(a => " " + pattern2str(a)).join("") + ")";
+
+  // array of subpatterns
+  return pattern.map(pattern2str).join(" ");
+}
+
+
+// pretty-print an error
+function error2str(e, as_comment=false) {
+  const error2lines = (e, root) => {
+    if (!Array.isArray(e))
+      return [e];
+    let lines = e.map(a => error2lines(a, false)).reduce((a, b) => a.concat(b), []);
+    if (!root)
+      lines = lines.map(a => "  " + a);
+    if (root && as_comment)
+      lines = lines.map(a => "# " + a);
+    return lines;
+  };
+  return error2lines(e, true).join("\n");
+}
 
 function print(as_comment=false) {
   const prefix = as_comment ? "# " : "";
@@ -1497,7 +1559,7 @@ function interpret_file(src, search_path=false) {
       } catch (e) { flag = false }
     }
     if (!flag)
-      throw "Couldn't find file `" + src + "'";
+      throw ["Couldn't find file `" + src + "'"];
   }
   interpret(s);
 }
@@ -1528,7 +1590,7 @@ function debug_repl() {
     try {
       debug_interpret(s);
     } catch (e) {
-      console.log("Error: " + e);
+      console.log(error2str(["Error: ", e]));
       if (e.stack !== undefined)
         console.log(e.stack);
     }
@@ -1549,7 +1611,7 @@ function repl() {
       print(as_comment=true);
       console.log();
     } catch (e) {
-      console.log("# Error: " + e);
+      console.log(error2str(["Error: ", e], as_comment=true));
       if (e.stack !== undefined)
         console.log(e.stack);
       console.log();

@@ -1,3 +1,5 @@
+import base
+
 # combinator for linear recursion on natural numbers
 # base is f(0)
 # ind sends f(n - 1), n to f(n)

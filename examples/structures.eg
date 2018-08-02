@@ -1,3 +1,5 @@
+import base
+
 # tagged unions with optional accessors
 data true | false
 data nothing | _ itself

@@ -911,14 +911,19 @@ function run_case(bytes, i) {
     const pattern = get(extract_pattern(arity));
     const action = get(extract_values);
     const match = pattern_matches(pattern);
-    //console.log("pattern =", JSON.stringify(pattern), "action =", JSON.stringify(action), "match =", match,
+    //console.log("pattern =", JSON.stringify(pattern), "action =", disassemble(action), "match =", match,
     //            "stack =", JSON.stringify(stack));
     if (!done && match !== null) {
+      //console.log("before apttern transfer, symbosl =", JSON.stringify(symbols));
       pattern_transfer(match);
+      //console.log("after apttern transfer, symbosl =", JSON.stringify(symbols));
       pop(pattern.length);
+      //console.log("running action =", disassemble(action), "on stack =", JSON.stringify(stack), "symbols =", JSON.stringify(symbols));
       run(action);
       //console.log("after action, stack =", JSON.stringify(stack));
+      //console.log("before discarding", Object.keys(match).length, "items, symbols =", JSON.stringify(symbols));
       discard(Object.keys(match).length);
+      //console.log("after discarding, symbols =", JSON.stringify(symbols));
       done = true;
     }
   }
@@ -951,7 +956,7 @@ function run(bytes) {
         let code = get(extract_values);
         push(header.concat(to_int32(code.length)).concat(code));
       } break;
-      case op.QUOTE: go(extract_values); break;
+      case op.QUOTE: { let code = get(extract_values); push(code) } break;
       case op.APP: run(item()); break;
       case op.TRANSFER: { let n = get(extract_byte); transfer(n); } break;
       case op.LOAD: { let n = get(extract_byte); load(n); } break;
@@ -1033,6 +1038,9 @@ function extract_env(pattern) {
   if (!Array.isArray(pattern)) // tag or unescaped variable
     return (pattern in tags) ? [] : [pattern];
   let head = pattern[0];
+  if (["int", "num", "str", "wild"].includes(head))
+    return [];
+
   let tail = pattern.slice(1);
   const merge = (a, b) => {
     let result = a;
@@ -1150,6 +1158,7 @@ function compile_pattern(pattern, env=[]) {
 
 function compile_case(pattern, expr, env=[]) {
   env = env.concat(extract_env(pattern));
+  //console.log("extract_env gave ", extract_env(pattern));
   let [compiled_pattern, arity] = compile_pattern(pattern, env);
   let compiled_expr = compile_expr(expr, env);
   let expr_header = to_int32(compiled_expr.length);
@@ -1194,7 +1203,9 @@ function compile_quote(quote, env=[]) {
 
   // if no free identifiers, just use ordinary quote
   if (free.length === 0) {
+    //console.log("quoted =", quoted);
     let bytes = compile_expr(quoted, env);
+    //console.log("byets =", bytes);
     return [op.QUOTE].concat(to_int32(bytes.length)).concat(bytes);
   }
 

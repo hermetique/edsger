@@ -1189,6 +1189,7 @@ function compile_pattern(pattern, env=[]) {
         result.push([op.CASE_VAR, to_var_id(tag, env)]);
       }
 
+      // tag
       else {
         const { id, arity } = tags[tag];
         if (result.length < arity)
@@ -1203,7 +1204,7 @@ function compile_pattern(pattern, env=[]) {
       }
     }
     
-    // is a variable/literal
+    // variable/literal
     else {
       let head = pat[0];
       let tail = pat.slice(1);

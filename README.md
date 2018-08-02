@@ -106,6 +106,7 @@ a integer f ≡ "got an integer"
 a number f ≡ "got a number"
 a string f ≡ "got a string"
 _ f ≡ "got something else"
+```
 
 ## Miscellaneous sugar
 

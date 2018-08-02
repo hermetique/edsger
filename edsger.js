@@ -2,6 +2,7 @@
 
 const path = process.argv[2];
 const is_num = s => !isNaN(s);
+const is_str = s => typeof s === "string" || s instanceof String;
 const is_space = c => /\s/.test(c);
 const is_open_brace = c => c.length === 1 && /\[|\{|\(/.test(c);
 const is_close_brace = c => c.length === 1 && /\)|\}|\]/.test(c);
@@ -413,41 +414,43 @@ const parse = (tokens, repl_mode=false) =>
 
 // intrinsics
 const op = {
-  OVERFLOW: 0,   // for opcodes > 255
-  NULL: 0,       // null terminator
-  FAIL: 1,       // stop execution w/ some error message
-  IMMSTR: 2,     // load string
-  IMMINT: 3,     // load 32-bit integer
-  IMMFLOAT: 4,   // load double
-  QUOTE: 5,      // load quoted program
-  CLOSURE: 6,    // load closure. format:
-                 //   n[byte] <n variable indices to store in closure> quoted_program
-  APP: 7,        // run quoted program
-  TRANSFER: 8,   // move top n items onto the symbol stack
-  LOAD: 9,       // push item nth from the top of the symbol stack onto the stack proper
-  DISCARD: 10,   // pop n items from symbol stack
-  DUP: 11,       // duplicate top item
-  SWAP: 12,      // swap top 2 items
+  OVERFLOW: 0,    // for opcodes > 255
+  NULL: 0,        // null terminator
+  FAIL: 1,        // stop execution w/ some error message
+  IMMSTR: 2,      // load string
+  IMMINT: 3,      // load 32-bit integer
+  IMMFLOAT: 4,    // load double
+  QUOTE: 5,       // load quoted program
+  CLOSURE: 6,     // load closure. format:
+                  //   n[byte] <n variable indices to store in closure> quoted_program
+  APP: 7,         // run quoted program
+  TRANSFER: 8,    // move top n items onto the symbol stack
+  LOAD: 9,        // push item nth from the top of the symbol stack onto the stack proper
+  DISCARD: 10,    // pop n items from symbol stack
+  DUP: 11,        // duplicate top item
+  SWAP: 12,       // swap top 2 items
 
-  CASE: 13,      // case statement. format is:
-  CASE_VAR: 0,   //   cases[byte] arity_per_case[byte] case1 quoted_code case2 quoted_code ..
-  CASE_INT: 1,   // where each case is:
-  CASE_STR: 2,   //   CASE_VAR[byte] var_id[byte] 
-  CASE_FLOAT: 3, // | CASE_INT[byte] integer[int32]
-  CASE_TAG32: 4, // | CASE_STR[byte] string (same encoding as IMMSTR)
-  CASE_WILD: 5,  // | CASE_FLOAT[byte] string (same encoding as IMMFLOAT)
-                 // | CASE_TAG32[byte] tag_id[int32] arity[byte] <arity sub-cases>
-                 // | CASE_WILD[byte]
-                 // | tag_id[byte] arity[byte] <arity sub-cases> (for tags <= 255)
-                 // var_id of 0 is a wild
-                 // quoted_code is size[int32] <int32 bytes of code>
+  CASE: 13,       // case statement. format is:
+  CASE_VAR: 0,    //   cases[byte] arity_per_case[byte] case1 quoted_code case2 quoted_code ..
+  CASE_INT: 1,    // where each case is:
+  CASE_STR: 2,    //   CASE_VAR[byte] var_id[byte] 
+  CASE_FLOAT: 3,  // | CASE_INT[byte] integer[int32]
+  CASE_TAG32: 4,  // | CASE_STR[byte] string (same encoding as IMMSTR)
+  CASE_WILD: 5,   // | CASE_FLOAT[byte] string (same encoding as IMMFLOAT)
+  CASE_INTV: 6,   // | CASE_TAG32[byte] tag_id[int32] arity[byte] <arity sub-cases>
+  CASE_STRV: 7,   // | CASE_WILD[byte]
+  CASE_FLOATV: 8, // | CASE_INTV[byte] var_id[byte] | CASE_STRV[byte] var_id[byte]
+                  // | CASE_FLOATV[byte] var_id[byte]
+                  // | tag_id[byte] arity[byte] <arity sub-cases> (for tags <= 255)
+                  // var_id of 0 is a wild
+                  // quoted_code is size[int32] <int32 bytes of code>
 
-  MAKE: 14,      // make a tagged object. format is:
-                 //   tag_id[byte] arity[byte]
-                 // pops arity items from stack and pushes [tag_id, popped items]
-  MAKE32: 15,    // like MAKE, but tag_id is an int32
-                 
-  ADD: 16,       // arithmetic
+  MAKE: 14,       // make a tagged object. format is:
+                  //   tag_id[byte] arity[byte]
+                  // pops arity items from stack and pushes [tag_id, popped items]
+  MAKE32: 15,     // like MAKE, but tag_id is an int32
+                  
+  ADD: 16,        // arithmetic
   MUL: 17,
   SUB: 18,
   DIV: 19,
@@ -481,7 +484,7 @@ function bind_tags(arr) {
     for (const ident of entry)
       if (ident in word_map)
         throw "Enum identifier `" + ident + "' is already bound";
-  const already_bound = Object.keys(tags).length + 6; // VAR, INT, STR, FLOAT, TAG32, WILD are reserved
+  const already_bound = Object.keys(tags).length + 9; // VAR, INT, STR, FLOAT, TAG32, etc, are reserved
   for (let i = 0; i < arr.length; ++i) {
     const entry = arr[i];
     const tag = entry[entry.length - 1];
@@ -643,7 +646,7 @@ function extract_values_with(f) {
     let values = [];
     let len;
     [len, i] = f(bytes, i);
-    //console.log("len =", len);
+    console.log("len =", len, "bytes =", JSON.stringify(bytes), "i =", i);
     for (let j = 0; j < len; ++j)
       values.push(bytes[++i]);
     return [values, i];
@@ -691,25 +694,43 @@ function extract_pattern(arity) {
       return val;
     };
     const head = get(extract_byte);
-    if (head === op.CASE_VAR) {
-      const id = get(extract_byte) + 1;
-      return [["var", id], i];
-    } else if (head === op.CASE_INT) {
-      const num = get(extract_int32);
-      return [["int", num], i];
-    } else if (head === op.CASE_STR) {
-      const str = get(extract_string);
-      return [["str", str], i];
-    } else if (head === op.CASE_FLOAT) {
-      const str = get(extract_double);
-      return [["num", str], i];
-    } else if (head === op.CASE_WILD) {
-      return [["wild"], i];
-    } else {
-      const tag = head === op.CASE_TAG32 ? get(extract_int32) : head;
-      const arity = get(extract_byte);
-      const pat = get(extract_pattern(arity));
-      return [[tag, pat], i];
+    switch (head) {
+      case op.CASE_VAR: {
+        const id = get(extract_byte) + 1;
+        return [["var", id], i];
+      }
+      case op.CASE_STR: {
+        const str = get(extract_string);
+        return [["str", str], i];
+      }
+      case op.CASE_INT: {
+        const num = get(extract_int32);
+        return [["int", num], i];
+      }
+      case op.CASE_FLOAT: {
+        const num = get(extract_double);
+        return [["num", num], i];
+      }
+      case op.CASE_WILD:
+        return [["wild"], i];
+      case op.CASE_INTV: {
+        const id = get(extract_byte) + 1;
+        return [["intvar", id], i];
+      }
+      case op.CASE_STRV: {
+        const id = get(extract_byte) + 1;
+        return [["strvar", id], i];
+      }
+      case op.CASE_FLOATV: {
+        const id = get(extract_byte) + 1;
+        return [["numvar", id], i];
+      }
+      default: {
+        const tag = head === op.CASE_TAG32 ? get(extract_int32) : head;
+        const arity = get(extract_byte);
+        const pat = get(extract_pattern(arity));
+        return [[tag, pat], i];
+      }
     }
   };
   return function(bytes, i=0) {
@@ -766,6 +787,30 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   // wilds
   if (pattern[0] === "wild")
     return accu;
+
+  // integer variables
+  if (pattern[0] === "intvar") {
+    if (!is_num(item))
+      return null;
+    accu[pattern[1]] = parseInt(item);
+    return accu;
+  }
+
+  // string variables
+  if (pattern[0] === "strvar") {
+    if (!is_str(item))
+      return null;
+    accu[pattern[1]] = item;
+    return accu;
+  }
+
+  // float variables
+  if (pattern[0] === "numvar") {
+    if (!is_num(item))
+      return null;
+    accu[pattern[1]] = parseFloat(item);
+    return accu;
+  }
 
   // tags are just numbers > 3
   if (!isNaN(pattern[0])) {
@@ -856,6 +901,7 @@ function disassemble(bytes, indent_by=0) {
         let cases = [];
         for (let j = 0; j < n_cases; ++j) {
           const pattern = get(extract_pattern(arity));
+          console.log("got pattern =", pattern.length);
           const action = get(extract_values);
           result = result.concat([" ".repeat(indent_width) + JSON.stringify(pattern) + " → "])
                          .concat(disassemble(action, indent_by + indent_width));
@@ -926,10 +972,11 @@ function run_case(bytes, i) {
   let done = false;
   for (let j = 0; j < n_cases; ++j) {
     const pattern = get(extract_pattern(arity));
+    console.log("got pattern =", JSON.stringify(pattern), "i =", i,"extracting values...");
     const action = get(extract_values);
     const match = pattern_matches(pattern);
-    //console.log("pattern =", JSON.stringify(pattern), "action =", disassemble(action), "match =", match,
-    //            "stack =", JSON.stringify(stack));
+    console.log("pattern =", JSON.stringify(pattern), "action =", disassemble(action), "match =", match,
+                "stack =", JSON.stringify(stack));
     if (!done && match !== null) {
       //console.log("before apttern transfer, symbosl =", JSON.stringify(symbols));
       pattern_transfer(match);
@@ -1100,7 +1147,7 @@ function extract_free(expr, env=[]) {
         case "int": break;
         case "num": break;
         case "str": break;
-        case "var":
+        case "var": case "intvar": case "numvar": case "strvar":
           if (!is_bound(tail[0], env))
             result.push(tail[0]);
           break;
@@ -1124,19 +1171,32 @@ function compile_pattern(pattern, env=[]) {
     if (!Array.isArray(pat)) {
       const tag = pat;
 
-      if (!(tag in tags)) { // if not bound as tag, treat as unescaped variable
+      if (["int", "num", "str"].includes(tag)) { // primitive tags
+        if (result.length === 0)
+          throw "Bad pattern: primitive tag `" + tag + "' expects a variable but got nothing";
+        const arg = result.pop();
+        if (!Array.isArray(arg) || arg[0] !== op.CASE_VAR)
+          throw "Bad pattern: primitive tag `" + tag + "' expects a variable but got " + arg;
+        const opcodes = { "int": op.CASE_INTV, "num": op.CASE_FLOATV, "str": op.CASE_STRV };
+        result.push([opcodes[tag], arg[1]]);
+      }
+      
+      else if (!(tag in tags)) { // treat as unescaped variable
         result.push([op.CASE_VAR, to_var_id(tag, env)]);
-        continue;
       }
 
-      const { id, arity } = tags[tag];
-      if (result.length < arity)
-        throw "Bad pattern: tag `" + tag + "' expects " + arity + " arguments but is applied to " + result.length;
+      else {
+        const { id, arity } = tags[tag];
+        if (result.length < arity)
+          throw "Bad pattern: tag `" + tag + "' expects " + arity
+                                     + " arguments but is applied to "
+                                     + result.length;
 
-      const compiled_id = id < 256 ? [id] : [op.CASE_TAG32].concat(to_int32(id));
-      const args = arity === 0 ? [] : result.splice(-arity);
+        const compiled_id = id < 256 ? [id] : [op.CASE_TAG32].concat(to_int32(id));
+        const args = arity === 0 ? [] : result.splice(-arity);
 
-      result.push(compiled_id.concat([arity]).concat(args));
+        result.push(compiled_id.concat([arity]).concat(args));
+      }
     }
     
     // is a variable/literal
@@ -1160,6 +1220,18 @@ function compile_pattern(pattern, env=[]) {
         case "str": {
           let str = tail[0];
           result.push([op.CASE_STR].concat(encode_string(str)));
+        } break;
+        case "intvar": {
+          let var_name = tail[0];
+          result.push([op.CASE_INTV].concat(to_var_id(var_name, env)));
+        } break;
+        case "numvar": {
+          let var_name = tail[0];
+          result.push([op.CASE_FLOATV].concat(to_var_id(var_name, env)));
+        } break;
+        case "strvar": {
+          let var_name = tail[0];
+          result.push([op.CASE_STRV].concat(to_var_id(var_name, env)));
         } break;
       }
     }

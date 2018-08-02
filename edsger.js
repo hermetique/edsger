@@ -485,10 +485,11 @@ function dup() { push(peek()) }
 function swap() { let second = stack.splice(-2, 1); stack = stack.concat(second) }
 function make_tagged(tag, arity) { push([tag, pop(arity)]) }
 function bind_tags(arr) {
-  for (const entry of arr)
-    for (const ident of entry)
-      if (ident in word_map)
-        throw ["Enum identifier `" + ident + "' is already bound"];
+  for (const entry of arr) {
+    let tag = entry[entry.length - 1];
+    if (tag in word_map)
+      throw ["Enum tag `" + tag + "' is already bound"];
+  }
   const already_bound = Object.keys(tags).length + 9; // VAR, INT, STR, FLOAT, TAG32, etc, are reserved
   for (let i = 0; i < arr.length; ++i) {
     const entry = arr[i];
@@ -519,11 +520,11 @@ function bind_tags(arr) {
       //console.log("pattern =", pattern, "catch_all =", catch_all);
       let code = ["lambda",
         ["case", ["pattern"].concat(pattern).concat([tag]), ["expr", ["var", "a"]]],
-        ["case", ["pattern", ["wild"]],
-          ["expr",
-            ["str", "Failed to extract `" + accessor + "'"], "fail"
-          ]
-        ]
+        //["case", ["pattern", ["wild"]],
+        //  ["expr",
+        //    ["str", "Failed to extract `" + accessor + "'"], "fail"
+        //  ]
+        //]
       ];
       //console.log("code =", JSON.stringify(code));
       code = compile_lambda(code);

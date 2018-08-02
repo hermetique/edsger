@@ -25,7 +25,7 @@ data nil | tail head cons
 
 # pretty printer
 
-a integer show ≡ a number show ≡ a "" ++
+a integer show ≡ a number show ≡ a "" bytecode 20
 a string show ≡ a
 true show ≡ "true"
 false show ≡ "false"
@@ -75,3 +75,11 @@ a b unless ≡ a () b ite
 
 nil f filter ≡ nil
 a b cons f filter ≡ a f filter b f . (b cons) when
+
+# folds
+
+nil a f foldr ≡ a
+t h cons a f foldr ≡ t [h a f .] f foldr
+
+nil a f foldl ≡ a
+t h cons a f foldl ≡ [t a f foldl] h f .

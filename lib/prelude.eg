@@ -47,7 +47,7 @@ a b cons f map ≡ a f map b f . cons
 # predicates
 
 0 num->bool ≡ false
-_ num->bool ≡ true
+a number num->bool ≡ true
 
 false not ≡ true
 true not ≡ false

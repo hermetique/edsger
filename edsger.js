@@ -506,7 +506,6 @@ function bind_tags(arr) {
     bind(tag, ctr);
 
     // generate accessors
-    //console.log("accessors =", accessors);
     for (let j = 0; j < accessors.length; ++j) {
       const accessor = accessors[j];
       if (accessor === "_")
@@ -517,21 +516,11 @@ function bind_tags(arr) {
       pattern.push(["var", "a"]);
       for (let k = j + 1; k < accessors.length; ++k)
         pattern.push(["wild"]);
-      //console.log("pattern =", pattern, "catch_all =", catch_all);
       let code = ["lambda",
         ["case", ["pattern"].concat(pattern).concat([tag]), ["expr", ["var", "a"]]],
-        //["case", ["pattern", ["wild"]],
-        //  ["expr",
-        //    ["str", "Failed to extract `" + accessor + "'"], "fail"
-        //  ]
-        //]
       ];
-      //console.log("code =", JSON.stringify(code));
       code = compile_lambda(code);
-      //console.log("code =", JSON.stringify(code));
-      //console.log("code =", disassemble(code));
       bind(accessor, code);
-      //console.log("accessor =", accessor, "bound to", JSON.stringify(code));
     }
   }
 }
@@ -564,10 +553,6 @@ function bind(name, bytes) {
   }
 }
 function unbind_all(names) {
-  //console.log(disassemble(words[word_map["fib'"]]));
-  //console.log("word_map");
-  //console.log(disassemble(words[word_map["fib"]]));
-  //console.log("unbinding =", names);
   for (const name of names)
     delete word_map[name];
 }
@@ -616,8 +601,6 @@ function encode_value(a) {
     return [op.IMMSTR].concat(encode_string(a.toString()));
   return encode_tagged_value(a);
 }
-
-//console.log(encode_value([9,[[6,[]],[5,[]]]]));
 
 // [var id] -> bytecode loading the value of each var
 function encode_closure(refs) {
@@ -824,7 +807,6 @@ function pattern_matches(pattern, item=undefined, accu={}) {
       return null;
     // matching tags = match all the parameters
     let result = pattern_matches(pattern[1], item[1], accu);
-    //console.log("result =", result, "patternslice =", pattern.slice(1), item.slice(1), pattern, item);
     return result;
   }
 
@@ -978,7 +960,6 @@ function run_case(bytes, i) {
   for (let j = 0; j < n_cases; ++j) {
     const pattern = get(extract_pattern(arity));
     patterns.push(pattern);
-    //console.log("got pattern =", JSON.stringify(pattern), "i =", i,"extracting values...");
     const action = get(extract_values);
     const match = pattern_matches(pattern);
     //console.log("pattern =", pattern2str(pattern), "action =", disassemble(action), "match =", match,
@@ -1065,7 +1046,6 @@ function run_header(bytes) {
     i += size;
     ++word;
   }
-  //console.log("words =", JSON.stringify(words), "bytes =", JSON.stringify(bytes));
 }
 
 function run_file(file, print_stack=true) {
@@ -1079,7 +1059,6 @@ function run_file(file, print_stack=true) {
   }
   let bytes = Array.from(buffer);
   let header_size = extract_int32(bytes)[0];
-  //console.log("header =", JSON.stringify(bytes));
   bytes = bytes.slice(4);
   run_header(bytes.splice(0, header_size));
   run(bytes);
@@ -1169,10 +1148,6 @@ function extract_free(expr, env=[]) {
   }
   return result;
 }
-
-// let s = "do a λ c a → c a";
-// console.log(JSON.stringify(parse(lex(preprocess(s)))));
-// console.log(extract_free(parse(lex(preprocess(s)))[0]));
 
 function compile_pattern(pattern, env=[]) {
   let result = [];
@@ -1264,7 +1239,6 @@ function compile_pattern(pattern, env=[]) {
 
 function compile_case(pattern, expr, env=[]) {
   env = env.concat(extract_env(pattern));
-  //console.log("extract_env gave ", extract_env(pattern));
   let [compiled_pattern, arity] = compile_pattern(pattern, env);
   let compiled_expr = compile_expr(expr, env);
   let expr_header = to_int32(compiled_expr.length);
@@ -1392,7 +1366,6 @@ function compile_def(def, return_names=false, env=[]) {
     let [compiled_case, arity] = compile_case(true_pattern, expr, env);
     let bytes = [op.CASE, 1, arity].concat(compiled_case);
     bind(name, bytes);
-    //console.log("binding ", name, "to", disassemble(bytes));
     names.push(name);
   }
   return return_names ? names : [];
@@ -1547,7 +1520,6 @@ function print(as_comment=false) {
 // String -> () + manipulate stack
 function interpret(s, repl_mode=false) {
   let bytes = compile(parse(lex(preprocess(s)), repl_mode));
-  //console.log(bytes);
   run(bytes);
   return bytes;
 }
@@ -1574,7 +1546,6 @@ function debug_interpret(s) {
   console.log("---------- desugared ----------");
   console.log(preprocess(s));
   console.log("---------- ast ----------");
-  //console.log(JSON.stringify(lex(preprocess(s))));
   console.log(JSON.stringify(parse(lex(preprocess(s)))));
   console.log("---------- bytecode ----------");
   let bytecode = interpret(s);

@@ -1472,12 +1472,14 @@ function interpret_file(src, search_path=false) {
   try {
     s = fs.readFileSync(src, "utf-8");
   } catch (e) {
-    if (search_path)
-      s = fs.readFileSync(path + "/" + src, "utf-8");
-    else {
-      console.log("Error: Couldn't find file `" + src + "'");
-      process.exit();
+    let flag = true;
+    if (search_path) {
+      try {
+        s = fs.readFileSync(path + "/" + src, "utf-8");
+      } catch (e) { flag = false }
     }
+    if (!flag)
+      throw "Couldn't find file `" + src + "'";
   }
   interpret(s);
 }

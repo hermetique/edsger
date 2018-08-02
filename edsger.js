@@ -646,7 +646,7 @@ function extract_values_with(f) {
     let values = [];
     let len;
     [len, i] = f(bytes, i);
-    console.log("len =", len, "bytes =", JSON.stringify(bytes), "i =", i);
+    //console.log("len =", len, "bytes =", JSON.stringify(bytes), "i =", i);
     for (let j = 0; j < len; ++j)
       values.push(bytes[++i]);
     return [values, i];
@@ -991,6 +991,9 @@ function run_case(bytes, i) {
     }
   }
 
+  if (!done)
+    throw "Non-exhaustive patterns";
+
   return i;
 }
 
@@ -1033,7 +1036,7 @@ function run(bytes) {
       case op.MUL: push(num() * num()); break;
       case op.SUB: { let a = num(); let b = num(); push(b - a) } break;
       case op.DIV: { let a = num(); let b = num(); push(b / a) } break;
-      case op.CAT: { let a = item(); let b = item(); console.log("b =", b, "a =", a); push(b + a) } break;
+      case op.CAT: { let a = item(); let b = item(); push(b + a) } break;
       default:
         if (b in words) {
           run(words[b]);

@@ -41,6 +41,23 @@ a right f map ≡ a f . right
 nil f map ≡ nil
 a b cons f map ≡ a f map b f . cons
 
+# predicates
+
+0 num->bool ≡ false
+_ num->bool ≡ true
+
+false not ≡ true
+true not ≡ false
+
+true true and ≡ true
+_ _ and ≡ false
+
+false false or ≡ false
+_ _ or ≡ true
+
+/= ≡ - num->bool
+= ≡ /= not
+
 # conditionals
 
 true b c ite ≡ b .

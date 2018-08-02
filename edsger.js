@@ -430,7 +430,8 @@ const op = {
                   //   n[byte] <n variable indices to store in closure> quoted_program
   APP: 7,         // run quoted program
   TRANSFER: 8,    // move top n items onto the symbol stack
-  LOAD: 9,        // push item nth from the top of the symbol stack onto the stack proper
+  LOAD: 9,        // push item nth from the top of the symbol stack onto the stack proper. format:
+                  //   index[byte] (1 indexed)
   DISCARD: 10,    // pop n items from symbol stack
   DUP: 11,        // duplicate top item
   SWAP: 12,       // swap top 2 items

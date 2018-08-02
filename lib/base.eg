@@ -1,7 +1,7 @@
 . ≡ bytecode 7
-+ ≡ bytecode 16
-* ≡ bytecode 17
-- ≡ bytecode 18
-/ ≡ bytecode 19
-++ ≡ bytecode 20
-fail ≡ bytecode 1
+a number b number + ≡ bytecode 9 2 9 1 16
+a number b number * ≡ bytecode 9 2 9 1 17
+a number b number - ≡ bytecode 9 2 9 1 18
+a number b number / ≡ bytecode 9 2 9 1 19
+a string b string ++ ≡ bytecode 9 2 9 1 20
+a string fail ≡ bytecode 9 1 1

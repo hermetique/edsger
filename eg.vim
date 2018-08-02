@@ -7,7 +7,7 @@ end
 
 syn keyword egimports import
 syn keyword egkeywords data where do
-syn keyword egtypes int num str
+syn keyword egtypes integer number string
 syn match egvariables "\v'[^ ]+\s|'[^ ]+$"
 syn match egcomment "# .*$"
 

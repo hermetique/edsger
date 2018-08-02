@@ -463,6 +463,7 @@ let word_map = { // { name: bytecode index }
   "+": op.ADD, "*": op.MUL, "-": op.SUB, "/": op.DIV,
   "++": op.CAT, ".": op.APP, "fail": op.FAIL,
 }
+let primitive_tags = { "integer": op.CASE_INTV, "number": op.CASE_FLOATV, "string": op.CASE_STRV };
 
 // vm state: stack + symbol stack + tags
 let stack = [];
@@ -1108,7 +1109,7 @@ function compile_datadef(datadef) {
 // get all bound variables in a pattern
 function extract_env(pattern) {
   if (!Array.isArray(pattern)) // tag or unescaped variable
-    return (pattern in tags) || ["int", "num", "str"].includes(pattern)
+    return (pattern in tags) || (pattern in primitive_tags)
              ? []
              : [pattern];
   let head = pattern[0];
@@ -1175,14 +1176,13 @@ function compile_pattern(pattern, env=[]) {
     if (!Array.isArray(pat)) {
       const tag = pat;
 
-      if (["int", "num", "str"].includes(tag)) { // primitive tags
+      if (tag in primitive_tags) { // primitive tags
         if (result.length === 0)
           throw "Bad pattern: primitive tag `" + tag + "' expects a variable but got nothing";
         const arg = result.pop();
         if (!Array.isArray(arg) || arg[0] !== op.CASE_VAR)
-          throw "Bad pattern: primitive tag `" + tag + "' expects a variable but got " + arg;
-        const opcodes = { "int": op.CASE_INTV, "num": op.CASE_FLOATV, "str": op.CASE_STRV };
-        result.push([opcodes[tag], arg[1]]);
+          throw "Bad pattern: primitive tag `" + tag + "' expects a variable but got " + arg; // TODO: pretty-print arg
+        result.push([primitive_tags[tag], arg[1]]);
       }
       
       else if (!(tag in tags)) { // treat as unescaped variable

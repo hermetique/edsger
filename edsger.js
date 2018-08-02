@@ -471,6 +471,7 @@ let primitive_tags = { "integer": op.CASE_INTV, "number": op.CASE_FLOATV, "strin
 let stack = [];
 let symbols = [];
 let tags = {}; // { name: { .id .arity } }
+let imported = {}; // track imported files
 
 // simple vm actions
 function push(a) { stack.push(a) }
@@ -1409,8 +1410,12 @@ function compile_where(ast, env=[]) {
 }
 
 function compile_import(ast, env=[]) {
-  for (const im of ast.slice(1))
-    interpret_file(im + ".eg", search_path=true);
+  for (const im of ast.slice(1)) {
+    if (!(im in imported)) {
+      interpret_file(im + ".eg", search_path=true);
+      imported[im] = true;
+    }
+  }
   return [];
 }
 

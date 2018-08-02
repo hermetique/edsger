@@ -164,7 +164,13 @@ function preprocess(s) {
 
 function preprocess_file(file) {
   let fs = require("fs");
-  let s = fs.readFileSync(file, "utf-8");
+  let s;
+  try {
+    s = fs.readFileSync(file, "utf-8");
+  } catch (e) {
+    console.log("Error: Couldn't open file `" + file + "'");
+    process.exit();
+  }
   console.log(preprocess(s));
 }
 
@@ -385,19 +391,23 @@ const definition = pattern_terminated_by(exact("==").or(exact("≡"))).some().bi
 const import_statement = exact("import").right(one.terminated_by(exact(terminator))).bind(imports =>
                          pure(["import"].concat(imports)));
 
-// complete parser. [Token] -> [AST] or throw
-const collapse = result => {
+// Parser, [Token] -> [AST] or throw, retry with `do' prefix if repl mode
+const collapse = (parser, tokens, repl_mode=false) => {
+  let result = parser.parse(tokens);
   if (parse_failed(result))
     throw result;
-  if (result[0].length !== 0)
-    throw "Couldn't completely parse input";
+  if (result[0].length !== 0) {
+    if (!repl_mode)
+      throw "Couldn't completely parse input";
+    return collapse(parser, ["do"].concat(tokens).concat([";"]), repl_mode=false);
+  }
   return result[1];
 }
-const parse = tokens => collapse(definition.or(import_statement)
-                                           .or(datadef)
-                                           .or(do_block)
-                                           .many()
-                                           .parse(tokens));
+
+// complete parser. [Token] -> [AST] or throw
+const parse = (tokens, repl_mode=false) =>
+                collapse(definition.or(import_statement).or(datadef).or(do_block).many(),
+                         tokens, repl_mode);
 
 // -------------------- bytecode vm --------------------
 
@@ -884,7 +894,13 @@ function disassemble_header(bytes) {
 
 function disassemble_file(file) {
   let fs = require("fs");
-  let buffer = fs.readFileSync(file);
+  let buffer;
+  try {
+    buffer = fs.readFileSync(file);
+  } catch (e) {
+    console.log("Error: Couldn't open file `" + file + "'");
+    process.exit();
+  }
   let bytes = Array.from(buffer);
   let header_size = extract_int32(bytes)[0];
   bytes = bytes.slice(4);
@@ -998,7 +1014,13 @@ function run_header(bytes) {
 
 function run_file(file, print_stack=true) {
   let fs = require("fs");
-  let buffer = fs.readFileSync(file);
+  let buffer;
+  try {
+    buffer = fs.readFileSync(file);
+  } catch (e) {
+    console.log("Error: Couldn't open file `" + file + "'");
+    process.exit();
+  }
   let bytes = Array.from(buffer);
   let header_size = extract_int32(bytes)[0];
   //console.log("header =", JSON.stringify(bytes));
@@ -1333,12 +1355,23 @@ function compile_words() {
 
 function compile_file(src, dest) {
   let fs = require("fs");
-  let s = fs.readFileSync(src, "utf-8");
+  let s;
+  try {
+    s = fs.readFileSync(src, "utf-8");
+  } catch (e) {
+    console.log("Error: Couldn't open file `" + src + "'");
+    process.exit();
+  }
   let bytes = compile(parse(lex(preprocess(s))));
   let compiled_words = compile_words();
   let header = to_int32(compiled_words.length);
   let contents = header.concat(compiled_words).concat(bytes);
-  fs.writeFileSync(dest, Uint8Array.from(contents));
+  try {
+    fs.writeFileSync(dest, Uint8Array.from(contents));
+  } catch (e) {
+    console.log("Error: Couldn't write to `" + dest + "'");
+    process.exit();
+  }
 }
 
 // -------------------- interpreter/repl --------------------
@@ -1349,8 +1382,8 @@ function print(as_comment=false) {
 }
 
 // String -> () + manipulate stack
-function interpret(s) {
-  let bytes = compile(parse(lex(preprocess(s))));
+function interpret(s, repl_mode=false) {
+  let bytes = compile(parse(lex(preprocess(s)), repl_mode));
   //console.log(bytes);
   run(bytes);
   return bytes;
@@ -1364,8 +1397,10 @@ function interpret_file(src, search_path=false) {
   } catch (e) {
     if (search_path)
       s = fs.readFileSync(path + "/" + src, "utf-8");
-    else
-      throw e;
+    else {
+      console.log("Error: Couldn't find file `" + src + "'");
+      process.exit();
+    }
   }
   interpret(s);
 }
@@ -1413,7 +1448,7 @@ function repl() {
     if (s.trim().length === 0)
       return;
     try {
-      interpret(s);
+      interpret(s, repl_mode=true);
       print(as_comment=true);
       console.log();
     } catch (e) {

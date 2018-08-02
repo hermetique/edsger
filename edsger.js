@@ -859,31 +859,31 @@ function disassemble(bytes, indent_by=0) {
 
     let n, values;
     switch (b) {
-      case op.FAIL: put("FAIL"); brk(); break;
-      case op.IMMSTR: put("STR "); put(JSON.stringify(get(extract_string))); brk(); break;
-      case op.IMMINT: put("INT "); go(extract_int32); brk(); break;
-      case op.IMMFLOAT: put("FLOAT "); go(extract_double); brk(); break;
+      case op.FAIL: put("fail"); brk(); break;
+      case op.IMMSTR: put("str "); put(JSON.stringify(get(extract_string))); brk(); break;
+      case op.IMMINT: put("int "); go(extract_int32); brk(); break;
+      case op.IMMFLOAT: put("float "); go(extract_double); brk(); break;
       case op.CLOSURE: {
-        put("CLOSURE ");
+        put("closure ");
         const n_vars = get(extract_byte);
         for (let j = 0; j < n_vars; ++j)
           put(get(extract_byte) + " ");
         brk();
         } break;
       case op.QUOTE:
-        put("QUOTE");
+        put("quote");
         values = get(extract_values);
         result = result.concat(disassemble(values, indent_by + indent_width));
         brk();
         break;
-      case op.APP: put("APP"); brk(); break;
-      case op.TRANSFER: put("TRANSFER "); go(extract_byte); brk(); break;
-      case op.LOAD: put("LOAD "); go(extract_byte); brk(); break;
-      case op.DISCARD: put("DISCARD "); go(extract_byte); brk(); break;
-      case op.DUP: put("DUP"); brk(); break;
-      case op.SWAP: put("SWAP"); brk(); break;
+      case op.APP: put("app"); brk(); break;
+      case op.TRANSFER: put("transfer "); go(extract_byte); brk(); break;
+      case op.LOAD: put("load "); go(extract_byte); brk(); break;
+      case op.DISCARD: put("discard "); go(extract_byte); brk(); break;
+      case op.DUP: put("dup"); brk(); break;
+      case op.SWAP: put("swap"); brk(); break;
       case op.CASE: {
-        put("CASE");
+        put("case");
         const n_cases = get(extract_byte);
         const arity = get(extract_byte);
         let cases = [];
@@ -895,13 +895,13 @@ function disassemble(bytes, indent_by=0) {
         }
         brk();
       } break;
-      case op.MAKE: put("MAKE "); go(extract_byte); put(" FROM "); go(extract_byte); brk(); break;
-      case op.MAKE32: put("MAKE "); go(extract_int32); put(" FROM "); go(extract_byte); brk(); break;
-      case op.ADD: put("ADD"); brk(); break;
-      case op.MUL: put("MUL"); brk(); break;
-      case op.SUB: put("SUB"); brk(); break;
-      case op.DIV: put("DIV"); brk(); break;
-      case op.CAT: put("CAT"); brk(); break;
+      case op.MAKE: put("make "); go(extract_byte); put(" from "); go(extract_byte); brk(); break;
+      case op.MAKE32: put("make "); go(extract_int32); put(" from "); go(extract_byte); brk(); break;
+      case op.ADD: put("add"); brk(); break;
+      case op.MUL: put("mul"); brk(); break;
+      case op.SUB: put("sub"); brk(); break;
+      case op.DIV: put("div"); brk(); break;
+      case op.CAT: put("cat"); brk(); break;
       default:
         result.push(pretty(b)); brk(); break;
     }

@@ -7,6 +7,7 @@ data nil | tail head cons
 data _ leaf | left right branch
 
 # convert to string
+a number show ≡ a integer show ≡ a string show ≡ a "" ++
 true show ≡ "true"
 false show ≡ "false"
 nothing show ≡ "nothing"

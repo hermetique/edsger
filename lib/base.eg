@@ -1,0 +1,7 @@
+. ≡ bytecode 7
++ ≡ bytecode 16
+* ≡ bytecode 17
+- ≡ bytecode 18
+/ ≡ bytecode 19
+++ ≡ bytecode 20
+fail ≡ bytecode 1

@@ -6,7 +6,7 @@ if exists("b:current_syntax")
 end
 
 syn keyword egimports import
-syn keyword egkeywords data where do
+syn keyword egkeywords data where do bytecode
 syn keyword egtypes integer number string
 syn match egvariables "\v'[^ ]+\s|'[^ ]+$"
 syn match egcomment "# .*$"

@@ -141,6 +141,7 @@ function preprocess(s) {
         pop();
       else switch (token) {
         case "λ": case "\\": case "→": case "->": case "data": case "import": case "do":
+        case "bytecode":
           stack.push([false, col + indent, false]);
           break;
         case "where":
@@ -353,6 +354,10 @@ const statement = where_clause.or(simple_statement).label("statement");
 const do_block = exact("do").right(rec_expr.terminated_by(exact(terminator))).bind(expr =>
                  pure(["expr"].concat(expr)));
 
+// inline bytecode
+const bytecode_block = exact("bytecode").right(one.guard(is_num).terminated_by(exact(terminator))).bind(bytes =>
+                       pure(["bytecode"].concat(bytes)));
+
 // lambda block
 const lambda_char = exact("λ").or(exact("\\"));
 const arrow = exact("→").or(exact("->"));
@@ -381,7 +386,7 @@ const comprehension = exact("{").right(comprehension_body).bind(sides =>
                       pure(["expr"].concat(comprehension_expand(sides)))).label("comprehension");
 
 // 1 subtree of expression
-const expression = lambda.or(quote).or(comprehension).or(term);
+const expression = lambda.or(quote).or(comprehension).or(bytecode_block).or(term);
 
 // function definition
 const definition = pattern_terminated_by(exact("==").or(exact("≡"))).some().bind(pats =>
@@ -459,10 +464,7 @@ const op = {
 };
 let n_intrinsics = Object.keys(op).length;
 let words = new Array(n_intrinsics).fill([]);
-let word_map = { // { name: bytecode index }
-  "+": op.ADD, "*": op.MUL, "-": op.SUB, "/": op.DIV,
-  "++": op.CAT, ".": op.APP, "fail": op.FAIL,
-}
+let word_map = {} // { name: bytecode index }
 let primitive_tags = { "integer": op.CASE_INTV, "number": op.CASE_FLOATV, "string": op.CASE_STRV };
 
 // vm state: stack + symbol stack + tags
@@ -1324,6 +1326,14 @@ function compile_quote(quote, env=[]) {
 
 }
 
+function compile_bytecode(e, env) {
+  let bytes = e.slice(1).map(a => parseFloat(a));
+  let invalid = bytes.filter(a => a > 255 || !Number.isInteger(a)).length;
+  if (invalid > 0)
+    throw "Invalid bytecode instruction `" + invalid[0] + "'";
+  return bytes;
+}
+
 function compile_expr(expr, env=[]) {
   let result = [];
   for (const e of expr.slice(1)) {
@@ -1339,6 +1349,7 @@ function compile_expr(expr, env=[]) {
         case "var": result = result.concat([op.LOAD, to_var_id(tail[0], env) + 1]); break; // TODO: nasty +1
         case "quote": result = result.concat(compile_quote(e, env)); break;
         case "expr": result = result.concat(compile_expr(e, env)); break;
+        case "bytecode": result = result.concat(compile_bytecode(e, env)); break;
         default: throw "Bad AST node `" + head + "'";
       }
     } else {
@@ -1414,6 +1425,7 @@ function compile_ast_node(ast, env=[]) {
     case "import": return compile_import(ast, env);
     case "expr": return compile_expr(ast, env);
     case "int": case "num": case "str": case "lambda": case "quote":
+    case "bytecode":
       return compile_expr(["expr", ast], env);
   }
 }
@@ -1564,5 +1576,3 @@ switch (process.argv[3]) {
 ////console.log(where_clause.parse(lex(preprocess(s))));
 //debug_interpret(s);
 //print(stack);
-
-//console.log(parse(lex(preprocess(`do "\\test" "abc" ++`))));

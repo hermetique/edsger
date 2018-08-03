@@ -524,7 +524,7 @@ function bind_tags(arr) {
       let code = ["lambda",
         ["case", ["pattern"].concat(pattern).concat([tag]), ["expr", ["var", "a"]]],
       ];
-      code = compile_lambda(code);
+      code = compile_lambda(code, [], false);
       bind(accessor, code);
     }
   }
@@ -1377,7 +1377,8 @@ function check_exhaustive(patterns) {
   for (const i of inferred)
     if (!is_satisfied(i))
       throw ["Patterns are non-exhaustive:", patterns.map(pattern2str),
-             "The following inferred type is not satisfied:", inferred2str(i)];
+             "The following inferred cases are not satisfied:",
+             inferred.filter(a => !is_satisfied(a)).map(inferred2str)];
 }
 
 // interpret("data nil | _ _ cons");
@@ -1493,7 +1494,7 @@ function compile_case(pattern, expr, env=[]) {
   return [compiled_pattern.concat(expr_header).concat(compiled_expr), arity];
 }
 
-function compile_lambda(lambda, env=[]) {
+function compile_lambda(lambda, env=[], exhaustive_check=true) {
   let arity = undefined;
   let result = [];
 
@@ -1512,7 +1513,8 @@ function compile_lambda(lambda, env=[]) {
     result = result.concat(compiled_case);
   }
 
-  check_exhaustive(patterns);
+  if (exhaustive_check)
+    check_exhaustive(patterns);
 
   if (arity === undefined)
     arity = 0; // necessary if there were 0 cases

@@ -466,6 +466,7 @@ const op = {
 let n_intrinsics = Object.keys(op).length;
 let words = new Array(n_intrinsics).fill([]);
 let word_map = {} // { name: bytecode index }
+let partial_accessors = {} // { name: true }. dict of partial accessor functions
 let primitive_tags = { "integer": op.CASE_INTV, "number": op.CASE_FLOATV, "string": op.CASE_STRV };
 
 // vm state: stack + symbol stack + tags
@@ -526,6 +527,8 @@ function bind_tags(arr) {
       ];
       code = compile_lambda(code, [], false);
       bind(accessor, code);
+      if (arr.length > 1) // more than 1 case => accessor is partial
+        partial_accessors[accessor] = true;
     }
   }
   families.push(new_tags);
@@ -746,6 +749,27 @@ function extract_pattern(arity) {
     }
     return [subpatterns, i];
   }
+}
+
+// extract all patterns from a compiled case block
+function extract_patterns(bytes) {
+  let i = -1;
+  const get = f => {
+    [a, i] = f(bytes, i);
+    return a;
+  };
+
+  if (get(extract_byte) !== op.CASE)
+    return [];
+
+  const n_cases = get(extract_byte);
+  const arity = get(extract_byte);
+  let patterns = [];
+  for (let j = 0; j < n_cases; ++j) {
+    patterns.push(get(extract_pattern(arity)));
+    get(extract_values);
+  }
+  return patterns;
 }
 
 function pattern_matches(pattern, item=undefined, accu={}) {
@@ -1360,7 +1384,7 @@ function check_exhaustive(patterns) {
   //console.log("infer =", JSON.stringify(infer_from([[9, []], ["intvar", "a"], [11, []]])));
 
   if (patterns.length === 0)
-    throw "No patterns to check";
+    return; // no patterns = exhaustive
 
   let inferred = infer_from(patterns[0]);
   for (let i = 0; i < patterns.length; ++i) {
@@ -1392,6 +1416,22 @@ function check_exhaustive(patterns) {
       throw ["Patterns are not exhaustive:", patterns.map(pattern2str),
              "The following inferred cases are not satisfied:",
              inferred.filter(a => !is_satisfied(a)).map(inferred2str)];
+}
+
+// check that all currently defined words are exhaustive
+function check_exhaustive_words() {
+  for (const word in word_map) {
+    try {
+      //console.log("word =", word);
+      check_exhaustive(extract_patterns(words[word_map[word]]));
+    } catch (e) {
+      if (word in partial_accessors) {
+        //console.log("letting", word, "pass by, partial_accessors =", partial_accessors);
+        continue;
+      }
+      throw ["In `" + word + "':", e];
+    }
+  }
 }
 
 // interpret("data nil | _ _ cons");
@@ -1658,6 +1698,7 @@ function compile_import(ast, env=[]) {
   for (const im of ast.slice(1)) {
     if (!(im in imported)) {
       interpret_file(im + ".eg", search_path=true);
+      check_exhaustive_words();
       imported[im] = true;
     }
   }
@@ -1701,11 +1742,13 @@ function compile_file(src, dest) {
     console.log(error2str(["Error: Couldn't open file `" + src + "'"]));
     process.exit();
   }
+  let contents;
   try {
     let bytes = compile(parse(lex(preprocess(s))));
+    check_exhaustive_words();
     let compiled_words = compile_words();
     let header = to_int32(compiled_words.length);
-    let contents = header.concat(compiled_words).concat(bytes);
+    contents = header.concat(compiled_words).concat(bytes);
   } catch (e) {
     console.log(error2str(["Error:", e]));
     process.exit();

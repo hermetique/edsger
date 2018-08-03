@@ -1701,10 +1701,15 @@ function compile_file(src, dest) {
     console.log(error2str(["Error: Couldn't open file `" + src + "'"]));
     process.exit();
   }
-  let bytes = compile(parse(lex(preprocess(s))));
-  let compiled_words = compile_words();
-  let header = to_int32(compiled_words.length);
-  let contents = header.concat(compiled_words).concat(bytes);
+  try {
+    let bytes = compile(parse(lex(preprocess(s))));
+    let compiled_words = compile_words();
+    let header = to_int32(compiled_words.length);
+    let contents = header.concat(compiled_words).concat(bytes);
+  } catch (e) {
+    console.log(error2str(["Error:", e]));
+    process.exit();
+  }
   try {
     fs.writeFileSync(dest, Uint8Array.from(contents));
   } catch (e) {

@@ -135,7 +135,7 @@ bad ≡ λ nil → 1
 
 Overloads are handled similarly.
 
-e.g. the compiler deduces that this lambda expression takes in a list, integer, boolean, or string:
+e.g. this lambda expression takes in a list, integer, boolean, or string:
 ```bash
 bad' ≡ λ nil → 1
          1 → 1

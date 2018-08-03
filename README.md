@@ -123,7 +123,7 @@ t h cons f map ≡ t f map h f . cons
 
 All pattern matches must be exhaustive--the compiler automatically deduces the smallest possible type that covers all patterns and checks that the patterns are exhaustive with respect to it.
 
-For example, the lambda expression below has a pattern containing the `nil` tag, so the compiler deduces that it takes a list as input:
+e.g. the lambda expression below has a pattern containing the `nil` tag, so the compiler deduces that it takes a list as input:
 ```bash
 bad ≡ λ nil → 1
 # Error:
@@ -133,7 +133,9 @@ bad ≡ λ nil → 1
 #     (_? _? cons?)
 ```
 
-Overloads are handled similarly--the compiler deduces the smallest set of types that cover all patterns:
+Overloads are handled similarly.
+
+e.g. the compiler deduces that this lambda expression takes in a list, integer, boolean, or string:
 ```bash
 bad' ≡ λ nil → 1
          1 → 1

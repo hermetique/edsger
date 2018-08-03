@@ -1186,8 +1186,13 @@ function check_exhaustive(patterns) {
     if (Array.isArray(b)) {
       if (Array.isArray(b[0])) // sequence
         return b.map(c => inferred2str(c)).join(" ") + suffix;
-      else
-        return "(" + (b.length === 0 ? "" : inferred2str(b[1], false) + " " + b[0]) + suffix + ")";
+      else if (b.length === 0)
+        return "";
+      else {
+        let child = inferred2str(b[1], false);
+        let space = child === "" ? "" : " "
+        return "(" + child + space + b[0] + suffix + ")";
+      }
     }
 
     return b + suffix;
@@ -1516,7 +1521,9 @@ function compile_lambda(lambda, env=[], exhaustive_check=true) {
     if (arity === undefined)
       arity = new_arity;
     else if (arity !== new_arity)
-      throw ["Cases have mismatching numbers of arguments"];
+      throw ["Cases have mismatching numbers of arguments:",
+             [pattern2str(patterns[patterns.length - 2])], "has " + arity + ", but",
+             [pattern2str(patterns[patterns.length - 1])], "has " + new_arity];
 
     result = result.concat(compiled_case);
   }

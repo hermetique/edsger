@@ -1210,12 +1210,15 @@ function check_exhaustive(patterns) {
       if (!is_root && pattern.length !== type.length)
         return null;
       for (let i = 0; i < Math.min(pattern.length, type.length); ++i) {
+        //console.log("unifying", pattern2str(pattern[pattern.length - 1 - i]), "with",
+        //            inferred2str(type[type.length - 1- i ]));
         let tmp = unify(pattern[pattern.length - 1 - i], type[type.length - 1 - i]);
         if (tmp === null)
           return null; // any item in sequence doesn't match = fail
         tmps.push(tmp);
         satisfied = satisfied && is_satisfied(tmp);
       }
+
       // children are satisfied only if all children are satisfied
       if (!satisfied)
         tmps = tmps.map(a => make(get(a), false));
@@ -1229,10 +1232,10 @@ function check_exhaustive(patterns) {
         // if type is longer, all other children of the type that weren't checked are also satisfied
         if (type.length > pattern.length)
            tmps = tmps.concat(type.slice(0, type.length - Math.min(pattern.length, type.length))
-                      .map(a => satisfy(make("*")))).reverse();
+                      .map(a => satisfy(make("*"))));
       }
 
-      return make(tmps, satisfied);
+      return make(tmps.reverse(), satisfied);
     }
 
     // any type is always satisfied
@@ -1282,6 +1285,7 @@ function check_exhaustive(patterns) {
       return null;
     
     // check if args match
+    //console.log("unifying", pattern2str(pattern[1]), "with", inferred2str(type[1]));
     let args_unified = unify(pattern[1], type[1]);
     if (args_unified === null)
       return null;
@@ -1355,11 +1359,13 @@ function check_exhaustive(patterns) {
 
   let inferred = infer_from(patterns[0]);
   for (let i = 0; i < patterns.length; ++i) {
-    //console.log("pattern =", pattern2str(pattern), "inferred =", inferred2str(inferred));
+    //console.log("pattern =", pattern2str(patterns[i]), "inferred =", inferred.map(inferred2str).join(" | "));
     let success = false;
     for (let j = 0; j < inferred.length; ++j) {
+      //console.log("trying to unify ", pattern2str(patterns[i]), "with", inferred2str(inferred[j]));
       let new_inference = unify(patterns[i], inferred[j]);
-      //console.log("inferred[i] =", inferred2str(inferred[i]), "new_inference =", JSON.stringify(new_inference));
+      //console.log("inferred[i] =", inferred2str(inferred[i]), "new_inference =",
+      //            new_inference === null ? null : inferred2str(new_inference));
       if (new_inference !== null) {
         inferred[j] = new_inference;
         success = true;
@@ -1373,7 +1379,7 @@ function check_exhaustive(patterns) {
       --i; // need to retry this pattern in light of new inferred types
     }
 
-    //console.log("after: inferred =", inferred2str(inferred));
+    //console.log("after: inferred =", inferred.map(inferred2str).join(" | "));
   }
 
   for (const i of inferred)

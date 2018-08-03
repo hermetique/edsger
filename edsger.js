@@ -1305,8 +1305,8 @@ function check_exhaustive(patterns) {
       return result.map(a => make(a));
     }
 
-    // from variable, infer anything
-    if (pattern[0] === "var")
+    // from variable or wildcard, infer anything
+    if (pattern[0] === "var" || pattern[0] === "wild")
       return [satisfy(make("*"))];
 
     // from literals, infer corresponding type

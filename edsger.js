@@ -471,7 +471,8 @@ let primitive_tags = { "integer": op.CASE_INTV, "number": op.CASE_FLOATV, "strin
 // vm state: stack + symbol stack + tags
 let stack = [];
 let symbols = [];
-let tags = {}; // { name: { .id .arity } }
+let tags = {}; // { name: { .id .arity .family } }
+let families = []; // [[tags]];
 let imported = {}; // track imported files
 
 // simple vm actions
@@ -491,15 +492,19 @@ function bind_tags(arr) {
       throw ["Enum tag `" + tag + "' is already bound"];
   }
   const already_bound = Object.keys(tags).length + 9; // VAR, INT, STR, FLOAT, TAG32, etc, are reserved
+  let new_tags = [];
   for (let i = 0; i < arr.length; ++i) {
     const entry = arr[i];
     const tag = entry[entry.length - 1];
     const accessors = entry.slice(0, entry.length - 1);
 
+    new_tags.push(tag);
+
     // generate tag for pattern matches
     const id = i + already_bound;
     const arity = accessors.length;
-    tags[tag] = { id, arity };
+    const family = families.length;
+    tags[tag] = { id, arity, family };
 
     // generate constructor
     const ctr = id < 256 ? [op.MAKE, id, arity] : [op.MAKE32].concat(to_int32(id)).concat([arity]);
@@ -523,6 +528,7 @@ function bind_tags(arr) {
       bind(accessor, code);
     }
   }
+  families.push(new_tags);
 }
 function bind(name, bytes) {
   //console.log("binding =", name);
@@ -555,6 +561,15 @@ function bind(name, bytes) {
 function unbind_all(names) {
   for (const name of names)
     delete word_map[name];
+}
+function tag_bound(id) {
+  return get_tag(id) !== null;
+}
+function get_tag(id) {
+  for (const t in tags)
+    if (id === tags[t].id)
+      return t;
+  return null;
 }
 
 // -------------------- bytecode helpers --------------------
@@ -722,7 +737,7 @@ function extract_pattern(arity) {
       }
     }
   };
-  return function(bytes, i=0) {
+  return function(bytes, i=-1) {
     let subpatterns = [];
     for (let j = 0; j < arity; ++j) {
       let pat;
@@ -1066,7 +1081,7 @@ function run_file(file, print_stack=true) {
     print();
 }
 
-// -------------------- compiler --------------------
+// -------------------- compiler helpers --------------------
 
 // helper: given an of environment, convert an identifier to an id
 const to_var_id = (name, env) => {
@@ -1148,6 +1163,239 @@ function extract_free(expr, env=[]) {
   }
   return result;
 }
+
+// check that the given compiled patterns are exhaustive for the smallest possible types satisfying the patterns
+function check_exhaustive(patterns) {
+  // an inferred type is either "*" (any), "_" (unknown), "integer", "number", "string",
+  //                           [tag, args] or [pair, satisfied pairs]
+  // maintain [inferred type, satisfied] pairs
+  const make = (a, b=false) => [a, b];
+  const get = a => a[0];
+  const satisfy = a => [get(a), true];
+  const is_satisfied = a => a[1];
+
+  // integers can be promoted to numbers
+  const promote_int = a => make("number", is_satisfied(a));
+
+  const inferred2str = a => {
+    let b = get(a);
+    //console.log("a =", JSON.stringify(a), "b =", JSON.stringify(b));
+
+    if (Array.isArray(b)) {
+      if (Array.isArray(b[0])) // sequence
+        return (is_satisfied(a) ? "" : "?") + b.map(inferred2str).join(" ");
+      else
+        return (is_satisfied(a) ? "(" : "(?") + (b.length === 0 ? "" : b[0] + " " + inferred2str(b[1])) + ")";
+    }
+
+    return (is_satisfied(a) ? "" : "?") + b;
+  };
+
+  // either combine a type with a case to make an updated type, or return null if not possible
+  const unify = (pattern, pair, is_root=false) => {
+    //console.log("enteriing. pat =", pattern2str(pattern), "aka", JSON.stringify(pattern), "p =", JSON.stringify(pair));
+    let type = get(pair);
+
+    // empty sequences always match
+    if (Array.isArray(pattern) && pattern.length === 0 && Array.isArray(type) && type.length === 0)
+      return satisfy(pair);
+
+    // two sequences
+    if (Array.isArray(pattern[0]) && Array.isArray(type[0])) {
+      let tmps = [];
+      let satisfied = true;
+      // at root, patterns can match more than 1 item but not within tag constructs
+      if (!is_root && pattern.length !== type.length)
+        return null;
+      for (let i = 0; i < Math.min(pattern.length, type.length); ++i) {
+        let tmp = unify(pattern[pattern.length - 1 - i], type[type.length - 1 - i]);
+        if (tmp === null)
+          return null; // any item in sequence doesn't match = fail
+        tmps.push(tmp);
+        satisfied = satisfied && is_satisfied(tmp);
+      }
+      // children are satisfied only if all children are satisfied
+      if (!satisfied)
+        tmps = tmps.map(a => make(get(a), false));
+
+      // if satisfied
+      else {
+        // if type is shorter, the pattern is redundant
+        if (type.length < pattern.length)
+          throw ["The pattern `" + pattern2str(pattern) + "' is redundant"];
+
+        // if type is longer, all other children of the type that weren't checked are also satisfied
+        if (type.length > pattern.length)
+           tmps = tmps.concat(type.slice(0, type.length - Math.min(pattern.length, type.length))
+                      .map(a => satisfy(make("*")))).reverse();
+      }
+
+      return make(tmps, satisfied);
+    }
+
+    // any type is always satisfied
+    if (type === "*")
+      return satisfy(pair);
+
+    // variables and wildcards match anything
+    if (pattern[0] === "var" || pattern[0] === "wild")
+      return satisfy(pair);
+
+    // integers can be promoted to numbers
+    if (pattern[0] === "num" && type === "integer")
+      return promote_int(pair);
+    if (pattern[0] === "numvar" && type === "integer")
+      return satisfy(promote_int(pair));
+
+    // integers can unify with numbers
+    if (pattern[0] === "int" && type === "number")
+      return pair;
+    if (pattern[0] === "intvar" && type === "number")
+      return pair; // there are more numbers than integers
+
+    // general case for types with (pretty much) infinite number of values
+    const lits = [["int", "integer"], ["str", "string"], ["num", "number"]];
+    for (const [pat, tag] of lits) {
+      // pattern literal
+      if (pattern[0] === pat)
+        return type === "_" ? make(tag) : // instantiate wildcards
+               type !== tag ? null : // incompatible types
+                              pair; // nothing changes (there are infinite values)
+
+      // pattern variable
+      if (pattern[0] === pat + "var") {
+        let r= type === "_" ? satisfy(make(tag)) : // instantiate and satisfy wildcards
+               type !== tag ? null : // incompatible types
+                              satisfy(pair); // variables can satisfy an infinite no. of values
+        return r;
+      }
+    }
+
+    // arbitrary tags: check if tags match
+    if (!tag_bound(pattern[0]))
+      throw "Bad pattern tag `" + pattern[0] + "'";
+    let pattern_tag = get_tag(pattern[0]);
+    let type_tag = type[0];
+    if (pattern_tag !== type_tag)
+      return null;
+    
+    // check if args match
+    let args_unified = unify(pattern[1], type[1]);
+    if (args_unified === null)
+      return null;
+    return make([type_tag, args_unified], is_satisfied(args_unified));
+  };
+
+  // return a list of possible types given a pattern
+  const infer_from = pattern => {
+    //console.log("pattern =", JSON.stringify(pattern));
+    // from empty sequence, infer empty sequence
+    if (Array.isArray(pattern) && pattern.length === 0)
+      return [make([])];
+
+    // types of sequences = cartesian product of types of each item
+    if (Array.isArray(pattern[0])) {
+      let result = infer_from(pattern[0]).map(a => [a]);
+      for (const pat of pattern.slice(1)) {
+        let new_inferences = infer_from(pat);
+        //console.log("new_inferences =", new_inferences);
+        //console.log("result =", result);
+        result = result.map(a => new_inferences.map(b => a.concat([b]))).reduce((a, b) => a.concat(b), []);
+      }
+      return result.map(a => make(a));
+    }
+
+    // from variable, infer anything
+    if (pattern[0] === "var")
+      return [satisfy(make("*"))];
+
+    // from literals, infer corresponding type
+    // and from variables, infer corresponding satisfied type
+    const lits = { "intvar": "integer", "strvar": "string", "numvar": "number" };
+    if (pattern[0] + "var" in lits)
+      return [make(lits[pattern[0] + "var"])];
+    else if (pattern[0] in lits)
+      return [satisfy(make(lits[pattern[0]]))];
+
+    // from tags, infer wildcards in place of arguments and all other tags in the same family
+    if (tag_bound(pattern[0])) {
+      let tag = get_tag(pattern[0]);
+      let family = families[tags[tag].family];
+      //console.log("tag =", tag, "family =", family);
+      let cases = [];
+      for (const t of family) {
+        //console.log("trying t =", t);
+        if (t === tag) {
+          //console.log("it's a tag!")
+          let arg_cases = infer_from(pattern[1]);
+          //console.log("arg_cases =", JSON.stringify(arg_cases), "pattern =", pattern[1]);
+          cases = cases.concat(arg_cases.map(a => make([t, a])));
+        } else {
+          //console.log("it's not a tag!")
+          cases.push(make([t, make(new Array(tags[t].arity).fill(make("_")))]));
+        }
+      }
+      //console.log("cases =", JSON.stringify(cases));
+      return cases;
+    }
+  };
+
+  //console.log("pattern =", JSON.stringify(patterns[0]));
+  //let type = make([make("integer"), make(["cons", make([make(["nil", make([])]), make("integer")])])]);
+  //console.log("unify =", JSON.stringify(unify(patterns[0], type, is_root=true)));
+
+  //console.log("infer =", JSON.stringify(infer_from([["int", "1"], ["str", "2"], ["int", "3"]])));
+  //console.log("infer =", JSON.stringify(infer_from([[9, []], ["str", "2"], [11, []]])));
+  //console.log("infer =", JSON.stringify(infer_from([[9, []], ["intvar", "a"], [11, []]])));
+
+  if (patterns.length === 0)
+    throw "No patterns to check";
+
+  let inferred = infer_from(patterns[0]);
+  for (let i = 0; i < patterns.length; ++i) {
+    //console.log("pattern =", pattern2str(pattern), "inferred =", inferred2str(inferred));
+    let success = false;
+    for (let j = 0; j < inferred.length; ++j) {
+      let new_inference = unify(patterns[i], inferred[j]);
+      //console.log("inferred[i] =", inferred2str(inferred[i]), "new_inference =", JSON.stringify(new_inference));
+      if (new_inference !== null) {
+        inferred[j] = new_inference;
+        success = true;
+      }
+      // can't break early because the new pattern could close more than 1 inferred type
+      // e.g. 'a 'b 'c would close int int int, str str str, str int str, etc.
+    }
+    // if nothing got unified, have to create a new inferred type
+    if (!success) {
+      inferred = inferred.concat(infer_from(patterns[i]));
+      --i; // need to retry this pattern in light of new inferred types
+    }
+
+    //console.log("after: inferred =", inferred2str(inferred));
+  }
+
+  for (const i of inferred)
+    if (!is_satisfied(i))
+      throw ["Patterns are non-exhaustive:", patterns.map(pattern2str),
+             "The following inferred type is not satisfied:", inferred2str(i)];
+}
+
+// interpret("data nil | _ _ cons");
+// interpret("data low | mid | high");
+// //let pat = extract_pattern(1)(compile_pattern(["pattern", "nil", "a", "number", "cons"], ["a", "b"])[0])[0];
+// let pat = extract_pattern(1)(compile_pattern(["pattern", "nil", ["numvar", "a"], "cons"], ["a", "b"])[0])[0];
+// //let pat2 = extract_pattern(1)(compile_pattern(["pattern", ["var", "a"], ["var", "b"], "cons", ["numvar", "a"], "cons"], ["a", "b"])[0])[0];
+// let pat3 = extract_pattern(1)(compile_pattern(["pattern", "nil"], ["a", "b"])[0])[0];
+// let pat4 = extract_pattern(1)(compile_pattern(["pattern", "low"], ["a", "b"])[0])[0];
+// let pat5 = extract_pattern(1)(compile_pattern(["pattern", "mid"], ["a", "b"])[0])[0];
+// let pat6 = extract_pattern(1)(compile_pattern(["pattern", "high"], ["a", "b"])[0])[0];
+// try {
+//   check_exhaustive([pat/*, pat2*/, pat3, pat4, pat5, pat6]);
+// } catch(e) {
+//   console.log(error2str(e));
+// }
+
+// -------------------- compiler --------------------
 
 function compile_pattern(pattern, env=[]) {
   let result = [];
@@ -1250,9 +1498,11 @@ function compile_lambda(lambda, env=[]) {
   let result = [];
 
   // for each case
+  let patterns = [];
   for (const c of lambda.slice(1)) {
     let [_, pattern, expr] = c; // discard "case" at root
     let [compiled_case, new_arity] = compile_case(pattern, expr, env);
+    patterns.push(extract_pattern(new_arity)(compiled_case)[0]);
 
     if (arity === undefined)
       arity = new_arity;
@@ -1261,6 +1511,8 @@ function compile_lambda(lambda, env=[]) {
 
     result = result.concat(compiled_case);
   }
+
+  check_exhaustive(patterns);
 
   if (arity === undefined)
     arity = 0; // necessary if there were 0 cases
@@ -1486,9 +1738,8 @@ function pattern2str(pattern) {
   // tags are just numbers > 3
   if (!isNaN(pattern[0])) {
     let tag = parseInt(pattern[0]);
-    for (const t in tags)
-      if (tag === tags[t].id)
-        tag = t;
+    if (tag_bound(tag))
+      tag = get_tag(tag);
     return "(" + tag.toString() + pattern[1].map(a => " " + pattern2str(a)).join("") + ")";
   }
 
@@ -1515,6 +1766,7 @@ function error2str(e, as_comment=false) {
 function print(as_comment=false) {
   const prefix = as_comment ? "# " : "";
   console.log(prefix + JSON.stringify(stack));
+  //console.log("families =", families, "tags =", tags);
 }
 
 // String -> () + manipulate stack

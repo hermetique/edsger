@@ -1177,18 +1177,20 @@ function check_exhaustive(patterns) {
   // integers can be promoted to numbers
   const promote_int = a => make("number", is_satisfied(a));
 
-  const inferred2str = a => {
+  const inferred2str = (a, show_statuses=true) => {
     let b = get(a);
     //console.log("a =", JSON.stringify(a), "b =", JSON.stringify(b));
 
+    let suffix = is_satisfied(a) || !show_statuses ? "" : "?";
+
     if (Array.isArray(b)) {
       if (Array.isArray(b[0])) // sequence
-        return (is_satisfied(a) ? "" : "?") + b.map(inferred2str).join(" ");
+        return b.map(c => inferred2str(c)).join(" ") + suffix;
       else
-        return (is_satisfied(a) ? "(" : "(?") + (b.length === 0 ? "" : b[0] + " " + inferred2str(b[1])) + ")";
+        return "(" + (b.length === 0 ? "" : inferred2str(b[1], false) + " " + b[0]) + suffix + ")";
     }
 
-    return (is_satisfied(a) ? "" : "?") + b;
+    return b + suffix;
   };
 
   // either combine a type with a case to make an updated type, or return null if not possible
@@ -1376,7 +1378,7 @@ function check_exhaustive(patterns) {
 
   for (const i of inferred)
     if (!is_satisfied(i))
-      throw ["Patterns are non-exhaustive:", patterns.map(pattern2str),
+      throw ["Patterns are not exhaustive:", patterns.map(pattern2str),
              "The following inferred cases are not satisfied:",
              inferred.filter(a => !is_satisfied(a)).map(inferred2str)];
 }
@@ -1707,19 +1709,19 @@ function pattern2str(pattern) {
 
   // variables match anything
   if (pattern[0] === "var")
-    return "(var " + pattern[1] + ")";
+    return "(" + pattern[1] + " var)";
 
   // integers
   if (pattern[0] === "int")
-    return "(int " + pattern[1] + ")";
+    return "(" + pattern[1] + " int)";
 
   // strings
   if (pattern[0] === "str")
-    return "(str " + pattern[1] + ")";
+    return "(" + pattern[1] + " str)";
 
   // floats
   if (pattern[0] === "num")
-    return "(num " + pattern[1] + ")";
+    return "(" + pattern[1] + " num)";
 
   // wilds
   if (pattern[0] === "wild")
@@ -1727,22 +1729,22 @@ function pattern2str(pattern) {
 
   // integer variables
   if (pattern[0] === "intvar")
-    return "(intvar " + pattern[1] + ")";
+    return "(" + pattern[1] + " intvar)";
 
   // string variables
   if (pattern[0] === "strvar")
-    return "(strvar " + pattern[1] + ")";
+    return "(" + pattern[1] + " strvar)";
 
   // float variables
   if (pattern[0] === "numvar")
-    return "(numvar " + pattern[1] + ")";
+    return "(" + pattern[1] + " numvar)";
 
   // tags are just numbers > 3
   if (!isNaN(pattern[0])) {
     let tag = parseInt(pattern[0]);
     if (tag_bound(tag))
       tag = get_tag(tag);
-    return "(" + tag.toString() + pattern[1].map(a => " " + pattern2str(a)).join("") + ")";
+    return "(" + pattern[1].map(a => pattern2str(a) + " ").join("") + tag.toString() + ")";
   }
 
   // array of subpatterns

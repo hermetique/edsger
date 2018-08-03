@@ -157,7 +157,7 @@ bad' ≡ λ nil → 1
 This isn't as strong as exhaustiveness checking in strongly typed languages,
 but it does help to make sure that all cases you "intended" to consider are covered.
 
-e.g. One nice thing about exhaustiveness checking is that changing a data declaration like
+e.g. Changing a data declaration like
 ```haskell
 data true | false
 ```

@@ -1342,7 +1342,7 @@ function check_exhaustive(patterns) {
 
     // from variable or wildcard, infer anything
     if (pattern[0] === "var" || pattern[0] === "wild")
-      return [satisfy(make("*"))];
+      return [make("_")];
 
     // from literals, infer corresponding type
     // and from variables, infer corresponding satisfied type

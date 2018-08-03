@@ -102,16 +102,6 @@ of a `cons` pair.
 
 ## Pattern matching
 
-Functions can be overloaded just by defining patterns that match on different tags.
-e.g. this `map` function works on both lists and options:
-```haskell
-a nothing f map ≡ nothing
-a itself f map ≡ a f . itself
-
-nil f map ≡ nil
-t h cons f map ≡ t f map h f . cons
-```
-
 The primitive types `integer`, `number`, and `string` have corresponding unary tags, which let you match on them
 as well:
 ```haskell
@@ -121,8 +111,17 @@ a string f ≡ "got a string"
 _ f ≡ "got something else"
 ```
 
-Even though this kind of overloading is allowed, all pattern matches must be exhaustive--the compiler automatically deduces
-the smallest possible type that covers all patterns and checks that the patterns are exhaustive with respect to it.
+Functions can be overloaded just by defining patterns that match on different tags.
+e.g. this `map` function works on both lists and options:
+```haskell
+nothing f map ≡ nothing
+a itself f map ≡ a f . itself
+
+nil f map ≡ nil
+t h cons f map ≡ t f map h f . cons
+```
+
+All pattern matches must be exhaustive--the compiler automatically deduces the smallest possible type that covers all patterns and checks that the patterns are exhaustive with respect to it.
 
 For example, the lambda expression below has a pattern containing the `nil` tag, so the compiler deduces that it takes a list as input:
 ```bash
@@ -153,6 +152,19 @@ bad' ≡ λ nil → 1
 #     string??
 ```
 
+This isn't as strong as exhaustiveness checking in strongly typed languages,
+but it does help to make sure that all cases you "intended" to consider are covered.
+
+e.g. One nice thing about exhaustiveness checking is that changing a data declaration like
+```haskell
+data true | false
+```
+to
+```haskell
+data true | false | dunno
+```
+will raise compiler errors at the location of every function that needs to be changed in order to handle
+the new case.
 
 ## Miscellaneous
 

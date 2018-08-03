@@ -9,7 +9,7 @@ syn keyword egimports import
 syn keyword egkeywords data where do bytecode
 syn keyword egtypes integer number string
 syn match egvariables "\v'[^ ]+\s|'[^ ]+$"
-syn match egcomment "# .*$"
+syn match egcomment "#.*$"
 
 " syn match egnum "\v[+-]?\d+(\.\d+([eE][+-]?\d+)?)?"
 syn match egstr "\v\"[^"]*\""

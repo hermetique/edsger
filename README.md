@@ -141,7 +141,7 @@ bad ≡ λ nil → 1
 #     (_? _? cons?)
 ```
 
-Inference is recursive--the compiler infers the type "optional list whose first item is an integer if it exists" for the following function:
+Inference is recursive--the compiler infers the type "optional list whose first item is an integer if it exists" for the following lambda expression:
 ```bash
 bad ≡ λ nil 3 cons itself → 1
 # Error:
@@ -156,8 +156,8 @@ bad ≡ λ nil 3 cons itself → 1
 #         (((_? _? cons?) integer? cons?) itself?)?
 ```
 
-Since new cases can be added to function definitions at any time, exhaustiveness checking for functions
-only happens after an entire file has been imported or compiled.
+Since, unlike lambda expressions, new cases can be added to function definitions at any time,
+exhaustiveness checking for functions only happens after an entire file has been imported or compiled.
 
 e.g. trying to compile this file
 ```haskell

@@ -1216,7 +1216,7 @@ function check_exhaustive(patterns) {
       let keys = Object.keys(this.values);
       let qualifier = "";
       if (keys.length !== 0)
-        qualifier = " /= " + Object.keys(this.values).map(a => JSON.stringify(parser(a))).join(" ");
+        qualifier = " ≠ " + Object.keys(this.values).map(a => JSON.stringify(parser(a))).join(" ");
       return super.toString() + qualifier;
     }
     copy() { return new LitInference(dict_copy(this.values), this.is_satisfied); }

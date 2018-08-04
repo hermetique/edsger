@@ -68,7 +68,7 @@ do 1 λ 0 → "zero"
 # ["something else"]
 ```
 
-## Data types
+## Data types and pattern matching
 
 Define tagged variant types with `data`.
 

@@ -554,7 +554,8 @@ function bind(name, bytes) {
       let new_cases = bytes[1];
       let new_arity = bytes[2];
       if (new_arity !== arity) // the new case block needs to have compatible cases
-        throw ["Pre-existing definition has different number of arguments"];
+        throw ["New definition takes " + new_arity + " argument(s), but pre-existing definition takes " 
+                 + arity];
       words[op][1] += new_cases;
       words[op] = words[op].concat(bytes.slice(3)); // slice off op.CASE, cases, arity-per-case
                                                     // and just append the new cases
@@ -1429,7 +1430,7 @@ function check_exhaustive_words() {
         //console.log("letting", word, "pass by, partial_accessors =", partial_accessors);
         continue;
       }
-      throw ["In `" + word + "':", e];
+      throw ["In the definition of `" + word + "':", e];
     }
   }
 }
@@ -1555,21 +1556,32 @@ function compile_lambda(lambda, env=[], exhaustive_check=true) {
   let patterns = [];
   for (const c of lambda.slice(1)) {
     let [_, pattern, expr] = c; // discard "case" at root
-    let [compiled_case, new_arity] = compile_case(pattern, expr, env);
+    let compiled_case, new_arity;
+    try {
+      [compiled_case, new_arity] = compile_case(pattern, expr, env);
+    } catch (e) {
+      throw ["In a lambda expression:", e];
+    }
     patterns.push(extract_pattern(new_arity)(compiled_case)[0]);
 
     if (arity === undefined)
       arity = new_arity;
     else if (arity !== new_arity)
-      throw ["Cases have mismatching numbers of arguments:",
-             [pattern2str(patterns[patterns.length - 2])], "has " + arity + ", but",
-             [pattern2str(patterns[patterns.length - 1])], "has " + new_arity];
+      throw ["In a lambda expression:",
+              ["Cases have mismatching numbers of arguments:",
+               [pattern2str(patterns[patterns.length - 2])], "has " + arity + ", but",
+               [pattern2str(patterns[patterns.length - 1])], "has " + new_arity]];
 
     result = result.concat(compiled_case);
   }
 
-  if (exhaustive_check)
-    check_exhaustive(patterns);
+  if (exhaustive_check) {
+    try {
+      check_exhaustive(patterns);
+    } catch (e) {
+      throw ["In a lambda expression:", e];
+    }
+  }
 
   if (arity === undefined)
     arity = 0; // necessary if there were 0 cases
@@ -1588,7 +1600,7 @@ function compile_quote(quote, env=[]) {
   // check for unbound identifiers
   for (const a of free)
     if (!is_bound(a, env))
-      throw ["Unbound variable `" + a + "'"];
+      throw ["In a quoted expression:", ["Unbound variable `" + a + "'"]];
 
   // if no free identifiers, just use ordinary quote
   if (free.length === 0) {
@@ -1672,9 +1684,18 @@ function compile_def(def, return_names=false, env=[]) {
   for (const pattern of patterns) {
     let true_pattern = pattern.slice(0, -1); // slice off fn name
     let name = pattern[pattern.length - 1];
-    let [compiled_case, arity] = compile_case(true_pattern, expr, env);
+    let compiled_case, arity;
+    try {
+      [compiled_case, arity] = compile_case(true_pattern, expr, env);
+    } catch (e) {
+      throw ["In a definition of `" + name + "':", e];
+    }
     let bytes = [op.CASE, 1, arity].concat(compiled_case);
-    bind(name, bytes);
+    try {
+      bind(name, bytes);
+    } catch (e) {
+      throw ["In a definition of `" + name + "':", e];
+    }
     names.push(name);
   }
   return return_names ? names : [];

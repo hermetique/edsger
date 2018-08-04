@@ -119,53 +119,7 @@ t h cons f map ≡ t f map h f . cons
 
 # Exhaustiveness
 
-All pattern matches must be exhaustive--the compiler automatically deduces the smallest possible type that covers all patterns and checks that the patterns are exhaustive with respect to it.
-
-e.g. the lambda expression below has a pattern containing the `nil` tag, so the compiler deduces that it takes a list as input:
-```bash
-bad ≡ λ nil → 1
-# Error:
-#   Patterns are not exhaustive:
-#     (nil)
-#   The following inferred cases are not satisfied:
-#     (_? _? cons?)
-```
-
-Overloads are handled similarly.
-
-e.g. this lambda expression takes in a list, integer, boolean, or string:
-```bash
-bad' ≡ λ nil → 1
-         1 → 1
-         false → 1
-         "abc" → 1
-# Error:
-#   Patterns are not exhaustive:
-#     (nil)
-#     (1 int)
-#     (false)
-#     (abc str)
-#   The following inferred cases are not satisfied:
-#     (_? _? cons?)
-#     integer??
-#     (true?)?
-#     string??
-```
-
-Inference is recursive--the compiler infers the type "optional list of things that are probably integers" for the following function:
-```bash
-bad'' ≡ λ nil 3 cons itself → 1
-# Error:
-#   Patterns are not exhaustive:
-#     (((nil) (3 int) cons) itself)
-#   The following inferred cases are not satisfied:
-#     (nothing?)
-#     ((nil?) itself?)?
-#     (((nil?) integer? cons?) itself?)?
-#     (((_? _? cons?) integer? cons?) itself?)?
-```
-
-This isn't as strong as exhaustiveness checking in statically typed languages,
+All pattern matches must be exhaustive--this isn't as strong as exhaustiveness statically typed languages,
 but it does help to make sure that all cases you "intended" to consider are covered.
 
 e.g. Changing a data declaration like
@@ -178,6 +132,61 @@ data true | false | dunno
 ```
 will raise compiler errors at the location of every function that needs to be changed in order to handle
 the new case.
+
+The compiler automatically deduces the smallest possible type that covers all patterns and checks that the patterns are exhaustive with respect to it.
+
+e.g. the lambda expression below has a pattern containing the `nil` tag, so the compiler deduces that it takes a list as input:
+```bash
+bad ≡ λ nil → 1
+# Error:
+#   Patterns are not exhaustive:
+#     (nil)
+#   The following inferred cases are not satisfied:
+#     (_? _? cons?)
+```
+
+Inference is recursive--the compiler infers the type "optional list of things that are probably integers" for the following function:
+```bash
+bad ≡ λ nil 3 cons itself → 1
+# Error:
+#   In a definition of `bad':
+#     In a lambda expression:
+#       Patterns are not exhaustive:
+#         (((nil) (3 int) cons) itself)
+#       The following inferred cases are not satisfied:
+#         (nothing?)
+#         ((nil?) itself?)?
+#         (((nil?) integer? cons?) itself?)?
+#         (((_? _? cons?) integer? cons?) itself?)?
+```
+
+Since new cases can be added to function definitions at any time, exhaustiveness checking for functions
+only happens after an entire file has been imported or compiled.
+
+e.g. trying to compile this file
+```haskell
+import prelude
+
+nil bad ≡ 1
+1 bad ≡ 1
+false bad ≡ 1
+"abc" bad ≡ 1
+```
+gives
+```
+Error:
+  In the definition of `bad':
+    Patterns are not exhaustive:
+      (nil)
+      (1 int)
+      (false)
+      (abc str)
+    The following inferred cases are not satisfied:
+      (_? _? cons?)
+      integer??
+      (true?)?
+      string??
+```
 
 ## Miscellaneous
 

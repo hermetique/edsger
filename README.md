@@ -106,7 +106,7 @@ a string f ≡ "got a string"
 _ f ≡ "got something else"
 ```
 
-Functions can be overloaded just by defining patterns that match on different tags.
+Functions can be overloaded by just defining patterns that match on different tags.
 
 e.g. this `map` function works on both lists and options:
 ```haskell
@@ -126,22 +126,34 @@ data nil | tail head cons
 data head body tail creature
 ```
 
-## Exhaustiveness
+## Exhaustiveness and redundancy
 
-All pattern matches must be exhaustive--the compiler automatically deduces the smallest possible type that covers all patterns and checks that the patterns are exhaustive with respect to it.
-This isn't as strong as exhaustiveness in statically typed languages, but it does help to make sure that all cases you "intended" to consider are covered.
+All pattern matches must be exhaustive and free of redundancy--the compiler automatically deduces the least general possible type that covers all the given patterns in a function definition or lambda expression and checks the patterns with respect to it.
+These checks aren't as strong as they would be in a statically typed language, but it does help to make sure that all cases you "intended" to consider are covered and that there aren't any unreachable cases.
 
-e.g. the lambda expression below has a pattern containing the `nil` tag, so the compiler deduces that it takes a list as input:
+e.g. the lambda expression below has a pattern containing the `nil` tag, so the compiler deduces that it takes a list as input and complains that the `cons` case is not handled:
 ```bash
 bad ≡ λ nil → 1
 # Error:
-#   Patterns are not exhaustive:
-#     (nil)
-#   The following inferred cases are not satisfied:
-#     (_? _? cons?)
+#   In a definition of `bad':
+#     In a lambda expression:
+#       Patterns are not exhaustive:
+#         (nil)
+#       The following inferred cases are not satisfied:
+#         (_? _? cons?)
+```
+Conversely, the final pattern in this lambda expression is unreachable, since numbers include integers:
+```bash
+bad ≡ λ a number → "got number"; a integer → "got integer"
+# Error:
+#   In a definition of `bad':
+#     In a lambda expression:
+#       Pattern (1 intvar) is redundant.
+#       Previous patterns were:
+#         (1 numvar)
 ```
 
-Inference is recursive--the compiler infers the type "optional list whose first item is an integer if it exists" for the following lambda expression:
+Inference is recursive--for example, the compiler infers the type "optional list whose first item (if it exists) is an integer" for the following lambda expression:
 ```bash
 bad ≡ λ nil 3 cons itself → 1
 # Error:
@@ -150,14 +162,14 @@ bad ≡ λ nil 3 cons itself → 1
 #       Patterns are not exhaustive:
 #         (((nil) (3 int) cons) itself)
 #       The following inferred cases are not satisfied:
-#         (nothing?)
-#         ((nil?) itself?)?
-#         (((nil?) integer? cons?) itself?)?
-#         (((_? _? cons?) integer? cons?) itself?)?
+#         nothing?
+#         (nil? itself?)
+#         ((nil? (integer? ≠ 3) cons?) itself?)
+#         (((_? _? cons?) integer? cons?) itself?)
 ```
 
-Since, unlike lambda expressions, new cases can be added to function definitions at any time,
-exhaustiveness checking for functions only happens after an entire file has been imported or compiled.
+Since new cases can be added to function definitions at any time, function definitions are only checked 
+after an entire file has been imported or compiled.
 
 e.g. trying to compile this file
 ```haskell
@@ -179,9 +191,9 @@ Error:
       (abc str)
     The following inferred cases are not satisfied:
       (_? _? cons?)
-      integer??
-      (true?)?
-      string??
+      (integer? ≠ 1)
+      true?
+      (string? ≠ "abc")
 ```
 
 ## Miscellaneous

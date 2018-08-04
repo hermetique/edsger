@@ -117,7 +117,7 @@ nil f map ≡ nil
 t h cons f map ≡ t f map h f . cons
 ```
 
-# Exhaustiveness
+## Exhaustiveness
 
 All pattern matches must be exhaustive--this isn't as strong as exhaustiveness statically typed languages,
 but it does help to make sure that all cases you "intended" to consider are covered.

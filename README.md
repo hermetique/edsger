@@ -48,7 +48,6 @@ Quote by wrapping code in parentheses:
 do (1 +)
 # [[3,0,0,0,1,15]]
 ```
-The output shown is the compiled bytecode.
 
 Unquote using the function application operator `.`:
 ```bash

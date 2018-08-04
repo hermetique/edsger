@@ -1432,7 +1432,7 @@ function check_exhaustive(patterns) {
 
   if (patterns[0].length === 0) {
     if (patterns.length > 1)
-      throw ["Patterns are redundant:", patterns.slice(1).map(pattern2str)];
+      throw ["Patterns are unreachable:", patterns.slice(1).map(pattern2str)];
     else
       return; // exactly 1 empty pattern = exhaustive
   }
@@ -1440,7 +1440,7 @@ function check_exhaustive(patterns) {
   let inferred = infer_from(patterns[0]);
   for (let i = 0; i < patterns.length; ++i) {
     let success = false;
-    let not_redundant = false;
+    let not_unreachable = false;
 
     for (let j = 0; j < inferred.length; ++j) {
       //console.log("trying to unify ", pattern2str(patterns[i]), "with", inferred[j].toString());
@@ -1451,10 +1451,10 @@ function check_exhaustive(patterns) {
       //  console.log("new_inference.equals(inferred[j]) =", new_inference.equals(inferred[j]));
       //}
 
-      // a clause is not redundant if
+      // a clause is not unreachable if
       //   (exists inference where unification succeeds AND an update is made)
-      not_redundant = not_redundant || (new_inference !== null && !new_inference.equals(inferred[j]));
-      //console.log("now not_redundant =", not_redundant);
+      not_unreachable = not_unreachable || (new_inference !== null && !new_inference.equals(inferred[j]));
+      //console.log("now not_unreachable =", not_unreachable);
 
       if (new_inference !== null) {
         inferred[j] = new_inference;
@@ -1464,14 +1464,14 @@ function check_exhaustive(patterns) {
       }
     }
 
-    //console.log("success =", success, "not_redundant =", not_redundant, "pattern =", pattern2str(patterns[i]));
+    //console.log("success =", success, "not_unreachable =", not_unreachable, "pattern =", pattern2str(patterns[i]));
     //console.log("after: inferred =", inferred.map(a => a.toString()).join(" | "));
 
-    // a clause is not redundant if
+    // a clause is not unreachable if
     //   (forall inference, unification fails)
-    not_redundant = not_redundant || !success;
-    if (!not_redundant)
-      throw ["Pattern " + pattern2str(patterns[i]) + " is redundant.",
+    not_unreachable = not_unreachable || !success;
+    if (!not_unreachable)
+      throw ["Pattern " + pattern2str(patterns[i]) + " is unreachable.",
              "Previous patterns were:", patterns.slice(0, i).map(pattern2str)];
 
     // if nothing got unified, have to create a new inferred type

@@ -135,7 +135,7 @@ function preprocess(s) {
 
   for (const [indent, line] of lines) {
     dedent(indent);
-    new_lines.push("");
+    new_lines.push(" ".repeat(indent));
     for (const [token, row, col] of lex(line, with_coords=true)) {
       if (is_open_brace(token))
         stack.push([true, col + indent, false]);

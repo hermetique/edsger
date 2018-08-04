@@ -128,6 +128,10 @@ function preprocess(s) {
       stack.pop();
   }
   const last_indent = () => stack.length > 0 ? stack[stack.length - 1][1] : 0;
+  const to_ascii = s => s.replace(/λ/g, "\\")
+                         .replace("→", "->")
+                         .replace("≡", "==")
+                         .replace("≠", "/=");
 
   for (const [indent, line] of lines) {
     dedent(indent);
@@ -157,7 +161,7 @@ function preprocess(s) {
         } break;
       }
       if (!is_superfluous_brace(token))
-        new_lines[new_lines.length - 1] += token + " ";
+        new_lines[new_lines.length - 1] += to_ascii(token) + " ";
     }
   }
 

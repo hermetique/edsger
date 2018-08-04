@@ -1240,7 +1240,7 @@ function check_exhaustive(patterns) {
     }
     contains(v) { return super.contains(v) || (this.has_integers && Number.isInteger(parseFloat(v))); }
     toString() {
-      let suffix = "number" + super.toString(parseInt);
+      let suffix = "number" + super.toString(parseFloat);
       return dict_empty(this.values)
                ? (this.has_integers
                     ? "(" + suffix + " /= any integer)"
@@ -1335,7 +1335,9 @@ function check_exhaustive(patterns) {
     if (pattern[0] === "num" && pair instanceof Int)
       return pair.promoted().with_value(pattern[1]);
     if (pattern[0] === "numvar" && pair instanceof Int)
-      return pair.promoted().satisfied();
+      return pair.promoted().with_integers().satisfied();
+    if (pattern[0] === "numvar" && pair instanceof Num)
+      return pair.with_integers().satisfied();
 
     // integers can unify with numbers
     if (pattern[0] === "int" && pair instanceof Num)
@@ -1441,18 +1443,18 @@ function check_exhaustive(patterns) {
     let not_redundant = false;
 
     for (let j = 0; j < inferred.length; ++j) {
-      console.log("trying to unify ", pattern2str(patterns[i]), "with", inferred[j].toString());
+      //console.log("trying to unify ", pattern2str(patterns[i]), "with", inferred[j].toString());
       let new_inference = unify(patterns[i], inferred[j]);
-      console.log("inferred[j] =", inferred[j].toString(), "new_inference =",
-                  new_inference === null ? null : new_inference.toString());
-      if (new_inference !== null) {
-        console.log("new_inference.equals(inferred[j]) =", new_inference.equals(inferred[j]));
-      }
+      //console.log("inferred[j] =", inferred[j].toString(), "new_inference =",
+      //            new_inference === null ? null : new_inference.toString());
+      //if (new_inference !== null) {
+      //  console.log("new_inference.equals(inferred[j]) =", new_inference.equals(inferred[j]));
+      //}
 
       // a clause is not redundant if
       //   (exists inference where unification succeeds AND an update is made)
       not_redundant = not_redundant || (new_inference !== null && !new_inference.equals(inferred[j]));
-      console.log("now not_redundant =", not_redundant);
+      //console.log("now not_redundant =", not_redundant);
 
       if (new_inference !== null) {
         inferred[j] = new_inference;
@@ -1462,14 +1464,15 @@ function check_exhaustive(patterns) {
       }
     }
 
-    console.log("success =", success, "not_redundant =", not_redundant, "pattern =", pattern2str(patterns[i]));
-    console.log("after: inferred =", inferred.map(a => a.toString()).join(" | "));
+    //console.log("success =", success, "not_redundant =", not_redundant, "pattern =", pattern2str(patterns[i]));
+    //console.log("after: inferred =", inferred.map(a => a.toString()).join(" | "));
 
     // a clause is not redundant if
     //   (forall inference, unification fails)
     not_redundant = not_redundant || !success;
     if (!not_redundant)
-      throw ["Pattern " + pattern2str(patterns[i]) + " is redundant"];
+      throw ["Pattern " + pattern2str(patterns[i]) + " is redundant.",
+             "Previous patterns were:", patterns.slice(0, i).map(pattern2str)];
 
     // if nothing got unified, have to create a new inferred type
     if (!success) {

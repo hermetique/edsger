@@ -1191,184 +1191,233 @@ function extract_free(expr, env=[]) {
 
 // check that the given compiled patterns are exhaustive for the smallest possible types satisfying the patterns
 function check_exhaustive(patterns) {
-  // an inferred type is either "*" (any), "_" (unknown), "integer", "number", "string",
-  //                           [tag, args] or [pair, satisfied pairs]
-  // maintain [inferred type, satisfied] pairs
-  const make = (a, b=false) => [a, b];
-  const get = a => a[0];
-  const satisfy = a => [get(a), true];
-  const is_satisfied = a => a[1];
-
-  // integers can be promoted to numbers
-  const promote_int = a => make("number", is_satisfied(a));
-
-  const inferred2str = (a, show_statuses=true) => {
-    let b = get(a);
-    //console.log("a =", JSON.stringify(a), "b =", JSON.stringify(b));
-
-    let suffix = is_satisfied(a) || !show_statuses ? "" : "?";
-
-    if (Array.isArray(b)) {
-      if (Array.isArray(b[0])) // sequence
-        return b.map(c => inferred2str(c)).join(" ") + suffix;
-      else if (b.length === 0)
-        return "";
-      else {
-        let child = inferred2str(b[1], false);
-        let space = child === "" ? "" : " "
-        return "(" + child + space + b[0] + suffix + ")";
-      }
+  const dict_copy = d => { let a = {}; for (const v in d) a[v] = true; return a; };
+  const dict_empty = d => Object.keys(d).length === 0;
+  const dict_equal = (a, b) => {
+    for (const c in a)
+      if (!(c in b))
+        return false;
+    return Object.keys(a).length === Object.keys(b).length;
+  }
+  const all = a => a.reduce((b, c) => b && c, true);
+  const any = a => a.reduce((b, c) => b || c, false);
+  const zip = (a, b) => a.map((c, i) => [c, b[i]]);
+  class Inference {
+    constructor(is_satisfied=false) { this.is_satisfied = is_satisfied; }
+    toString() { return this.is_satisfied ? "" : "?"; }
+    copy() { return new Inference(this.is_satisfied); }
+    satisfied() { let copy = this.copy(); copy.is_satisfied = true; return copy; }
+  }
+  class LitInference extends Inference {
+    constructor(values, is_satisfied=false) { super(is_satisfied); this.values = values; }
+    with_value(v) { let copy = this.copy(); copy.values[v] = true; return copy; }
+    contains(v) { return v in this.values; }
+    toString(parser) {
+      let keys = Object.keys(this.values);
+      let qualifier = "";
+      if (keys.length !== 0)
+        qualifier = " /= " + Object.keys(this.values).map(a => JSON.stringify(parser(a))).join(" ");
+      return super.toString() + qualifier;
     }
-
-    return b + suffix;
-  };
+    copy() { return new LitInference(dict_copy(this.values), this.is_satisfied); }
+  }
+  class Int extends LitInference {
+    constructor(values={}, is_satisfied=false) { super(values, is_satisfied); }
+    promoted(v) { return new Num(this.values, this.is_satisfied, false); }
+    toString() {
+      let suffix = "integer" + super.toString(parseInt);
+      return dict_empty(this.values) ? suffix : "(" + suffix + ")";
+    }
+    copy() { return new Int(dict_copy(this.values), this.is_satisfied); }
+    equals(b) { return b instanceof Int
+                    && b.is_satisfied === this.is_satisfied
+                    && dict_equal(b.values, this.values); }
+  }
+  class Num extends LitInference {
+    constructor(values={}, is_satisfied=false, has_integers=false) {
+      super(values, is_satisfied);
+      this.has_integers = has_integers;
+    }
+    contains(v) { return super.contains(v) || (this.has_integers && Number.isInteger(parseFloat(v))); }
+    toString() {
+      let suffix = "number" + super.toString(parseInt);
+      return dict_empty(this.values)
+               ? (this.has_integers
+                    ? "(" + suffix + " /= any integer)"
+                    : suffix)
+               : (this.has_integers
+                    ? "(" + suffix + " or any integer)"
+                    : "(" + suffix + ")");
+    }
+    copy() { return new Num(dict_copy(this.values), this.is_satisfied, this.has_integers); }
+    with_integers() { let copy = this.copy(); copy.has_integers = true; return copy; }
+    equals(b) { return b instanceof Num
+                    && b.is_satisfied === this.is_satisfied 
+                    && b.has_integers === this.has_integers
+                    && dict_equal(b.values, this.values); }
+  }
+  class Str extends LitInference {
+    constructor(values={}, is_satisfied=false) { super(values, is_satisfied); }
+    toString() { return "(string" + super.toString(a => a) + ")"; }
+    copy() { return new Str(dict_copy(this.values), this.is_satisfied); }
+    equals(b) { return b instanceof Str
+                    && b.is_satisfied === this.is_satisfied
+                    && dict_equal(b.values, this.values); }
+  }
+  class Wild extends Inference {
+    constructor(is_satisfied=false) { super(is_satisfied); }
+    toString() { return "_" + super.toString(); }
+    copy() { return new Wild(this.is_satisfied); }
+    equals(b) { return b instanceof Wild && b.is_satisfied === this.is_satisfied; }
+  }
+  class Row extends Inference {
+    constructor(args, is_satisfied=false) { super(is_satisfied); this.args = args; }
+    toString() { return this.args.map(a => a.toString()).join(" "); }
+    copy() { return new Row(this.args.map(a => a.copy()), this.is_satisfied); }
+    empty() { return this.args.length === 0; }
+    equals(b) { return b instanceof Row
+                    && b.is_satisfied === this.is_satisfied
+                    && b.args.length === this.args.length
+                    && all(zip(b.args, this.args).map(p => p[0].equals(p[1]))); }
+  }
+  class Tag extends Inference {
+    constructor(name, args, is_satisfied=false) { super(is_satisfied); this.name = name; this.args = args; }
+    toString() {
+      let suffix = this.name + super.toString();
+      return this.args.empty() ? suffix : "(" + this.args.toString() + " " + suffix + ")";
+    }
+    copy() { return new Tag(this.name, this.args.copy(), this.is_satisfied); }
+    empty() { return this.args.empty(); }
+    equals(b) { return b instanceof Tag 
+                    && b.is_satisfied === this.is_satisfied
+                    && b.name === this.name
+                    && b.args.equals(this.args); }
+  }
+  //let a = new Int({3: true}).promoted();
+  //let b = a.satisfied();
+  //console.log(a.toString(), b.toString());
 
   // either combine a type with a case to make an updated type, or return null if not possible
-  const unify = (pattern, pair, is_root=false) => {
-    //console.log("enteriing. pat =", pattern2str(pattern), "aka", JSON.stringify(pattern), "p =", JSON.stringify(pair));
-    let type = get(pair);
-
+  const unify = (pattern, pair) => {
     // empty sequences always match
-    if (Array.isArray(pattern) && pattern.length === 0 && Array.isArray(type) && type.length === 0)
-      return satisfy(pair);
+    if (Array.isArray(pattern) && pattern.length === 0 && pair instanceof Row && pair.empty())
+      return pair.satisfied();
 
     // two sequences
-    if (Array.isArray(pattern[0]) && Array.isArray(type[0])) {
+    if (Array.isArray(pattern[0]) && pair instanceof Row) {
       let tmps = [];
       let satisfied = true;
-      // at root, patterns can match more than 1 item but not within tag constructs
-      if (!is_root && pattern.length !== type.length)
-        return null;
-      for (let i = 0; i < Math.min(pattern.length, type.length); ++i) {
-        //console.log("unifying", pattern2str(pattern[pattern.length - 1 - i]), "with",
-        //            inferred2str(type[type.length - 1- i ]));
-        let tmp = unify(pattern[pattern.length - 1 - i], type[type.length - 1 - i]);
+      for (let i = 0; i < pattern.length; ++i) {
+        let tmp = unify(pattern[i], pair.args[i]);
         if (tmp === null)
           return null; // any item in sequence doesn't match = fail
         tmps.push(tmp);
-        satisfied = satisfied && is_satisfied(tmp);
+        satisfied = satisfied && tmp.is_satisfied;
       }
 
       // children are satisfied only if all children are satisfied
       if (!satisfied)
-        tmps = tmps.map(a => make(get(a), false));
+        for (let i = 0; i < tmps.length; ++i)
+          tmps[i].is_satisfied = false;
 
-      // if satisfied
-      else {
-        // if type is shorter, the pattern is redundant
-        if (type.length < pattern.length)
-          throw ["The pattern `" + pattern2str(pattern) + "' is redundant"];
-
-        // if type is longer, all other children of the type that weren't checked are also satisfied
-        if (type.length > pattern.length)
-           tmps = tmps.concat(type.slice(0, type.length - Math.min(pattern.length, type.length))
-                      .map(a => satisfy(make("*"))));
-      }
-
-      return make(tmps.reverse(), satisfied);
+      return new Row(tmps, satisfied);
     }
 
-    // any type is always satisfied
-    if (type === "*")
-      return satisfy(pair);
+    // satisfied wildcard unifies with anything
+    if (pair instanceof Wild && pair.is_satisfied)
+      return pair;
 
     // variables and wildcards match anything
     if (pattern[0] === "var" || pattern[0] === "wild")
-      return satisfy(pair);
+      return pair.satisfied();
 
     // integers can be promoted to numbers
-    if (pattern[0] === "num" && type === "integer")
-      return promote_int(pair);
-    if (pattern[0] === "numvar" && type === "integer")
-      return satisfy(promote_int(pair));
+    if (pattern[0] === "num" && pair instanceof Int)
+      return pair.promoted().with_value(pattern[1]);
+    if (pattern[0] === "numvar" && pair instanceof Int)
+      return pair.promoted().satisfied();
 
     // integers can unify with numbers
-    if (pattern[0] === "int" && type === "number")
-      return pair;
-    if (pattern[0] === "intvar" && type === "number")
-      return pair; // there are more numbers than integers
+    if (pattern[0] === "int" && pair instanceof Num)
+      return pair.with_value(pattern[1]);
+    if (pattern[0] === "intvar" && pair instanceof Num)
+      return pair.with_integers();
 
     // general case for types with (pretty much) infinite number of values
-    const lits = [["int", "integer"], ["str", "string"], ["num", "number"]];
+    const lits = [["int", Int], ["str", Str], ["num", Num]];
     for (const [pat, tag] of lits) {
       // pattern literal
       if (pattern[0] === pat)
-        return type === "_" ? make(tag) : // instantiate wildcards
-               type !== tag ? null : // incompatible types
-                              pair; // nothing changes (there are infinite values)
+        return pair instanceof Wild && !pair.is_satisfied
+                 ? new tag() // instantiate wildcards
+                 : !(pair instanceof tag)
+                   ? null // incompatible types
+                   : pair.with_value(pattern[1]); // add the value to the set
 
       // pattern variable
-      if (pattern[0] === pat + "var") {
-        let r= type === "_" ? satisfy(make(tag)) : // instantiate and satisfy wildcards
-               type !== tag ? null : // incompatible types
-                              satisfy(pair); // variables can satisfy an infinite no. of values
-        return r;
-      }
+      else if (pattern[0] === pat + "var")
+        return pair instanceof Wild && !pair.is_satisfied
+                 ? new tag().satisfied() // instantiate + satisfy wildcards
+                 : !(pair instanceof tag)
+                   ? null // incompatible types
+                   : pair.satisfied(); // variables can satisfy infinite no. of values
     }
 
     // arbitrary tags: check if tags match
     if (!tag_bound(pattern[0]))
       throw "Bad pattern tag `" + pattern[0] + "'";
     let pattern_tag = get_tag(pattern[0]);
-    let type_tag = type[0];
-    if (pattern_tag !== type_tag)
+    // assume pair instanceof Tag
+    if (pattern_tag !== pair.name)
       return null;
     
     // check if args match
-    //console.log("unifying", pattern2str(pattern[1]), "with", inferred2str(type[1]));
-    let args_unified = unify(pattern[1], type[1]);
+    let args_unified = unify(pattern[1], pair.args);
     if (args_unified === null)
       return null;
-    return make([type_tag, args_unified], is_satisfied(args_unified));
+    let result = new Tag(pair.name, args_unified);
+    return args_unified.is_satisfied ? result.satisfied() : result;
   };
 
   // return a list of possible types given a pattern
   const infer_from = pattern => {
-    //console.log("pattern =", JSON.stringify(pattern));
     // from empty sequence, infer empty sequence
     if (Array.isArray(pattern) && pattern.length === 0)
-      return [make([])];
+      return [new Row([])];
 
     // types of sequences = cartesian product of types of each item
     if (Array.isArray(pattern[0])) {
       let result = infer_from(pattern[0]).map(a => [a]);
       for (const pat of pattern.slice(1)) {
         let new_inferences = infer_from(pat);
-        //console.log("new_inferences =", new_inferences);
-        //console.log("result =", result);
         result = result.map(a => new_inferences.map(b => a.concat([b]))).reduce((a, b) => a.concat(b), []);
       }
-      return result.map(a => make(a));
+      return result.map(a => new Row(a));
     }
 
     // from variable or wildcard, infer anything
     if (pattern[0] === "var" || pattern[0] === "wild")
-      return [make("_")];
+      return [new Wild()];
 
     // from literals, infer corresponding type
     // and from variables, infer corresponding satisfied type
-    const lits = { "intvar": "integer", "strvar": "string", "numvar": "number" };
+    const lits = { "intvar": Int, "strvar": Str, "numvar": Num };
     if (pattern[0] + "var" in lits)
-      return [make(lits[pattern[0] + "var"])];
+      return [new lits[pattern[0] + "var"]()]
     else if (pattern[0] in lits)
-      return [satisfy(make(lits[pattern[0]]))];
+      return [new lits[pattern[0]]()]
 
     // from tags, infer wildcards in place of arguments and all other tags in the same family
     if (tag_bound(pattern[0])) {
       let tag = get_tag(pattern[0]);
       let family = families[tags[tag].family];
-      //console.log("tag =", tag, "family =", family);
       let cases = [];
       for (const t of family) {
-        //console.log("trying t =", t);
         if (t === tag) {
-          //console.log("it's a tag!")
           let arg_cases = infer_from(pattern[1]);
-          //console.log("arg_cases =", JSON.stringify(arg_cases), "pattern =", pattern[1]);
-          cases = cases.concat(arg_cases.map(a => make([t, a])));
+          cases = cases.concat(arg_cases.map(a => new Tag(t, a)));
         } else {
-          //console.log("it's not a tag!")
-          cases.push(make([t, make(new Array(tags[t].arity).fill(make("_")))]));
+          cases.push(new Tag(t, new Row(new Array(tags[t].arity).fill(new Wild()))));
         }
       }
       //console.log("cases =", JSON.stringify(cases));
@@ -1376,47 +1425,64 @@ function check_exhaustive(patterns) {
     }
   };
 
-  //console.log("pattern =", JSON.stringify(patterns[0]));
-  //let type = make([make("integer"), make(["cons", make([make(["nil", make([])]), make("integer")])])]);
-  //console.log("unify =", JSON.stringify(unify(patterns[0], type, is_root=true)));
-
-  //console.log("infer =", JSON.stringify(infer_from([["int", "1"], ["str", "2"], ["int", "3"]])));
-  //console.log("infer =", JSON.stringify(infer_from([[9, []], ["str", "2"], [11, []]])));
-  //console.log("infer =", JSON.stringify(infer_from([[9, []], ["intvar", "a"], [11, []]])));
-
   if (patterns.length === 0)
     return; // no patterns = exhaustive
 
+  if (patterns[0].length === 0) {
+    if (patterns.length > 1)
+      throw ["Patterns are redundant:", patterns.slice(1).map(pattern2str)];
+    else
+      return; // exactly 1 empty pattern = exhaustive
+  }
+
   let inferred = infer_from(patterns[0]);
   for (let i = 0; i < patterns.length; ++i) {
-    //console.log("pattern =", pattern2str(patterns[i]), "inferred =", inferred.map(inferred2str).join(" | "));
     let success = false;
+    let not_redundant = false;
+
     for (let j = 0; j < inferred.length; ++j) {
-      //console.log("trying to unify ", pattern2str(patterns[i]), "with", inferred2str(inferred[j]));
+      console.log("trying to unify ", pattern2str(patterns[i]), "with", inferred[j].toString());
       let new_inference = unify(patterns[i], inferred[j]);
-      //console.log("inferred[i] =", inferred2str(inferred[i]), "new_inference =",
-      //            new_inference === null ? null : inferred2str(new_inference));
+      console.log("inferred[j] =", inferred[j].toString(), "new_inference =",
+                  new_inference === null ? null : new_inference.toString());
+      if (new_inference !== null) {
+        console.log("new_inference.equals(inferred[j]) =", new_inference.equals(inferred[j]));
+      }
+
+      // a clause is not redundant if
+      //   (exists inference where unification succeeds AND an update is made)
+      not_redundant = not_redundant || (new_inference !== null && !new_inference.equals(inferred[j]));
+      console.log("now not_redundant =", not_redundant);
+
       if (new_inference !== null) {
         inferred[j] = new_inference;
         success = true;
+        // can't break early because the new pattern could close more than 1 inferred type
+        // e.g. 'a 'b 'c would close int int int, str str str, str int str, etc.
       }
-      // can't break early because the new pattern could close more than 1 inferred type
-      // e.g. 'a 'b 'c would close int int int, str str str, str int str, etc.
     }
+
+    console.log("success =", success, "not_redundant =", not_redundant, "pattern =", pattern2str(patterns[i]));
+    console.log("after: inferred =", inferred.map(a => a.toString()).join(" | "));
+
+    // a clause is not redundant if
+    //   (forall inference, unification fails)
+    not_redundant = not_redundant || !success;
+    if (!not_redundant)
+      throw ["Pattern " + pattern2str(patterns[i]) + " is redundant"];
+
     // if nothing got unified, have to create a new inferred type
     if (!success) {
       inferred = inferred.concat(infer_from(patterns[i]));
       --i; // need to retry this pattern in light of new inferred types
     }
-
-    //console.log("after: inferred =", inferred.map(inferred2str).join(" | "));
   }
 
   for (const i of inferred)
-    if (!is_satisfied(i))
+    if (!i.is_satisfied)
       throw ["Patterns are not exhaustive:", patterns.map(pattern2str),
              "The following inferred cases are not satisfied:",
-             inferred.filter(a => !is_satisfied(a)).map(inferred2str)];
+             inferred.filter(a => !a.is_satisfied).map(a => a.toString())];
 }
 
 // check that all currently defined words are exhaustive

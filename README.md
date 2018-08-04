@@ -154,7 +154,7 @@ bad' ≡ λ nil → 1
 
 Inference is recursive--the compiler infers the type "optional list of things that are probably integers" for the following function:
 ```bash
-bad'' ≡ λ 
+bad'' ≡ λ nil 3 cons itself → 1
 # Error:
 #   Patterns are not exhaustive:
 #     (((nil) (3 int) cons) itself)

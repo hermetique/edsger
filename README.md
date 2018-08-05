@@ -236,26 +236,6 @@ a number b number - == bytecode 9 2 9 1 18
 a number b number / == bytecode 9 2 9 1 19
 ```
 
-A `{lhs | rhs}` comprehension intersperses `rhs` between all but first two items of `lhs`. For example,
-```haskell
-data nil | tail head cons
-do {nil 1 2 3 4 5 6 7 8 9 10 | cons}
-```
-becomes
-```bash
-do nil 1 cons 2 cons 3 cons 4 cons 5 cons 6 cons 7 cons 8 cons 9 cons 10 cons
-# [a list from 1 to 10]
-```
-and
-```bash
-do {1 2 3 4 5 6 7 8 9 10 | + 2 *}
-```
-becomes
-```bash
-do 1 2 + 2 * 3 + 2 * 4 + 2 * 5 + 2 * 6 + 2 * 7 + 2 * 8 + 2 * 9 + 2 * 10 + 2 *
-# [3560]
-```
-
 ## Whitespace
 
 Edsger is whitespace-sensitive. Most of the rules are adapted from my

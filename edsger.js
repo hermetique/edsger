@@ -376,22 +376,8 @@ const lambda = lambda_char.right(lambda_case.terminated_by(exact(terminator))).b
 const quote = exact("(").right(rec_expr.terminated_by(exact(")"))).bind(quoted =>
               pure(["quote"].concat(quoted))).label("quote");
 
-// comprehension
-const comprehension_body = rec_expr.terminated_by(exact("|")).bind(lhs =>
-                           rec_expr.terminated_by(exact("}")).bind(rhs =>
-                           pure([lhs, rhs])));
-const comprehension_expand = sides => {
-  const [lhs, rhs] = sides;
-  let result = [lhs[0]];
-  for (const expr of lhs.slice(1))
-    result = result.concat([expr]).concat(rhs);
-  return result;
-}
-const comprehension = exact("{").right(comprehension_body).bind(sides =>
-                      pure(["expr"].concat(comprehension_expand(sides)))).label("comprehension");
-
 // 1 subtree of expression
-const expression = lambda.or(quote).or(comprehension).or(bytecode_block).or(term);
+const expression = lambda.or(quote).or(bytecode_block).or(term);
 
 // function definition
 const definition = pattern_terminated_by(exact("==").or(exact("≡"))).some().bind(pats =>

@@ -143,7 +143,6 @@ data head body tail creature
 ## Exhaustiveness and reachability
 
 All pattern matches must be exhaustive and reachable--the compiler automatically deduces the least general possible type that covers all the given patterns in a function definition or lambda expression and checks the patterns with respect to it.
-These checks aren't as strong as they would be in a statically typed language, but it does help to make sure that all cases you "intended" to consider are covered and that there aren't any unreachable cases.
 
 e.g. the lambda expression below has a pattern containing the `nil` tag, so the compiler deduces that it takes a list as input and complains that the `cons` case is not handled:
 ```bash

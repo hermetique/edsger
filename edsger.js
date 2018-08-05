@@ -598,6 +598,12 @@ function get_tag(id) {
       return t;
   return null;
 }
+function get_word_name(id) {
+  for (const w in word_map)
+    if (id === word_map[w])
+      return w
+  return null;
+}
 
 // -------------------- bytecode helpers --------------------
 
@@ -1090,7 +1096,12 @@ function run(bytes) {
       case op.CAT: { let a = item(); let b = item(); push(b + a) } break;
       default:
         if (b in words) {
-          run(words[b]);
+          try {
+            run(words[b]);
+          } catch (e) {
+            let name = get_word_name(b);
+            throw name === null ? e : ["In `" + name + "':"].concat(e);
+          }
         } else {
           throw ["Unknown bytecode instruction " + b];
         }

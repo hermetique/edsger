@@ -122,7 +122,7 @@ data nil | tail head cons
 will generate partial functions `tail`, `->tail`, `<-tail`, `head`, `->head`, and `<-head` that
 manipulate the first and second fields of a `cons` pair.
 
-The updater doesn't have to be a function of 1 argument. Any other arguments that it might require
+If the updater isn't a function of 1 argument, any other arguments that it might require
 are just taken from the stack. For example,
 ```haskell
 "a"

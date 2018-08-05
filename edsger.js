@@ -130,6 +130,7 @@ function preprocess(s) {
   const last_indent = () => stack.length > 0 ? stack[stack.length - 1][1] : 0;
   const to_ascii = s => s.replace(/λ/g, "\\")
                          .replace("→", "->")
+                         .replace("←", "<-")
                          .replace("≡", "==")
                          .replace("≠", "/=");
 

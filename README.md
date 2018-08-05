@@ -26,10 +26,10 @@ do "hello, " "world" ++
 # ["hello, world"]
 ```
 
-Define functions using `≡` or `==`:
+Define functions with `==`:
 ```bash
-0 tri ≡ 0
-n tri ≡ n [n 1 -] tri + # square brackets are superfluous; just for visual grouping
+0 tri == 0
+n tri == n [n 1 -] tri + # square brackets are superfluous; just for visual grouping
 
 do 100 tri
 # [5050]
@@ -37,10 +37,10 @@ do 100 tri
 
 Define multiple cases at once by chaining equations together:
 ```scheme
-0 even? ≡ 1 odd? ≡ true
-1 even? ≡ 0 odd? ≡ false
-n even? ≡ n 1 - odd?
-n odd? ≡ n 1 - even?
+0 even? == 1 odd? == true
+1 even? == 0 odd? == false
+n even? == n 1 - odd?
+n odd? == n 1 - even?
 ```
 
 Quote by wrapping code in parentheses:
@@ -55,16 +55,16 @@ do 1 (1 +) .
 # [2]
 ```
 
-Define and apply an anonymous function with `λ` or `\` and `→` or `->`:
+Define and apply an anonymous function with `\` and `->`:
 ```bash
-do 1 2 λ a b → b a
+do 1 2 \ a b -> b a
 # [2,1]
 ```
 
 Anonymous functions can also have multiple cases:
 ```bash
-do 1 λ 0 → "zero"
-       _ → "something else"
+do 1 \ 0 -> "zero"
+       _ -> "something else"
 # ["something else"]
 ```
 
@@ -79,8 +79,8 @@ data true | false
 
 The type doesn't really have an explicit name, but you can pattern match on the tags `true` and `false`:
 ```haskell
-true show ≡ "true"
-false show ≡ "false"
+true show == "true"
+false show == "false"
 ```
 
 Tags can also take arguments. e.g. an option type:
@@ -92,20 +92,20 @@ Functions can be overloaded by just defining patterns that match on different ta
 
 e.g. this `map` function works on both lists and options:
 ```haskell
-nothing f map ≡ nothing
-a itself f map ≡ a f . itself
+nothing f map == nothing
+a itself f map == a f . itself
 
-nil f map ≡ nil
-t h cons f map ≡ t f map h f . cons
+nil f map == nil
+t h cons f map == t f map h f . cons
 ```
 
 The primitive types `integer`, `number`, and `string` have corresponding unary tags, which let you match on them
 as well:
 ```haskell
-a integer f ≡ "got an integer"
-a number f ≡ "got a number"
-a string f ≡ "got a string"
-_ f ≡ "got something else"
+a integer f == "got an integer"
+a number f == "got a number"
+a string f == "got a string"
+_ f == "got something else"
 ```
 
 If the underscores in a data declaration are replaced with an identifier `id`, that identifier
@@ -147,7 +147,7 @@ These checks aren't as strong as they would be in a statically typed language, b
 
 e.g. the lambda expression below has a pattern containing the `nil` tag, so the compiler deduces that it takes a list as input and complains that the `cons` case is not handled:
 ```bash
-bad ≡ λ nil → 1
+bad == \ nil -> 1
 # Error:
 #   In a definition of `bad':
 #     In a lambda expression:
@@ -158,7 +158,7 @@ bad ≡ λ nil → 1
 ```
 Conversely, the final pattern in this lambda expression is unreachable, since numbers include integers:
 ```bash
-bad ≡ λ a number → "got number"; a integer → "got integer"
+bad == \ a number -> "got number"; a integer -> "got integer"
 # Error:
 #   In a definition of `bad':
 #     In a lambda expression:
@@ -169,7 +169,7 @@ bad ≡ λ a number → "got number"; a integer → "got integer"
 
 Inference is recursive--for example, the compiler infers the type "optional list whose first item (if it exists) is an integer" for the following lambda expression:
 ```bash
-bad ≡ λ nil 3 cons itself → 1
+bad == \ nil 3 cons itself -> 1
 # Error:
 #   In a definition of `bad':
 #     In a lambda expression:
@@ -189,10 +189,10 @@ e.g. trying to compile this file
 ```haskell
 import prelude
 
-nil bad ≡ 1
-1 bad ≡ 1
-false bad ≡ 1
-"abc" bad ≡ 1
+nil bad == 1
+1 bad == 1
+false bad == 1
+"abc" bad == 1
 ```
 gives
 ```
@@ -212,21 +212,28 @@ Error:
 
 ## Miscellaneous
 
+Some unicode characters get replaced with ascii approximations during preprocessing:
+- `λ` becomes `\`
+- `≡` becomes `==`
+- `→` becomes `->`
+- `←` becomes `<-`
+- `≠` becomes `/=`
+
 A `where` clause defines local bindings:
 ```haskell
-n fib ≡ 1 1 n fib' instead where
-  _ a instead ≡ a
-  a b 0 fib' ≡ a b
-  a b n fib' ≡ [a b +] a [n 1 -] fib'
+n fib == 1 1 n fib' instead where
+  _ a instead == a
+  a b 0 fib' == a b
+  a b n fib' == [a b +] a [n 1 -] fib'
 ```
 
 The `bytecode` keyword lets you write bytecode directly.
 For example, here are definitions of the arithmetic operators:
 ```haskell
-a number b number + ≡ bytecode 9 2 9 1 16
-a number b number * ≡ bytecode 9 2 9 1 17
-a number b number - ≡ bytecode 9 2 9 1 18
-a number b number / ≡ bytecode 9 2 9 1 19
+a number b number + == bytecode 9 2 9 1 16
+a number b number * == bytecode 9 2 9 1 17
+a number b number - == bytecode 9 2 9 1 18
+a number b number / == bytecode 9 2 9 1 19
 ```
 
 A `{lhs | rhs}` comprehension intersperses `rhs` between all but first two items of `lhs`. For example,

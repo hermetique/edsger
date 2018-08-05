@@ -520,19 +520,51 @@ function bind_tags(arr) {
       const accessor = accessors[j];
       if (accessor === "_")
         continue; // don't bind placeholder accessors
-      let pattern = [];
-      for (let k = 0; k < j; ++k)
-        pattern.push(["wild"]);
-      pattern.push(["var", "a"]);
-      for (let k = j + 1; k < accessors.length; ++k)
-        pattern.push(["wild"]);
+
+      // generate accessor
+      const wilds = n => new Array(n).fill(["wild"])
+      let pattern = wilds(j).concat([["var", "a"]]).concat(wilds(accessors.length - j - 1));
       let code = ["lambda",
         ["case", ["pattern"].concat(pattern).concat([tag]), ["expr", ["var", "a"]]],
       ];
       code = compile_lambda(code, [], false);
       bind(accessor, code);
-      if (arr.length > 1) // more than 1 case => accessor is partial
+
+      // generate mutator
+      const upto = (n, init=0) => new Array(n - init).fill(0).map((e, i) => ["var", "a" + (init + i)]);
+      pattern = upto(j).concat([["var", "a"]]).concat(upto(accessors.length, j + 1));
+      let body = upto(j).concat([["var", "b"]]).concat(upto(accessors.length, j + 1)).concat([tag]);
+      code = ["lambda",
+        ["case", ["pattern"].concat(pattern).concat([tag]).concat([["var", "b"]]),
+                 ["expr"].concat(body)],
+      ];
+      code = compile_lambda(code, [], false);
+      bind("->" + accessor, code);
+
+      // generate updater
+      pattern = upto(j).concat([["var", "a"]]).concat(upto(accessors.length, j + 1));
+      // apply the fn first so it has access to stack before the object
+      body = [["var", "a"], ["var", "b"], ["bytecode", op.APP], 
+              ["lambda",
+                ["case",
+                  ["pattern", ["var", "c"]],
+                  ["expr"]
+                    .concat(upto(j))
+                    .concat([["var", "c"]])
+                    .concat(upto(accessors.length, j + 1))
+                    .concat([tag])]]];
+      code = ["lambda",
+               ["case",
+                 ["pattern"].concat(pattern).concat([tag]).concat([["var", "b"]]),
+                   ["expr"].concat(body)]];
+      code = compile_lambda(code, [], false);
+      bind("<-" + accessor, code);
+
+      if (arr.length > 1) { // more than 1 case => accessor is partial
         partial_accessors[accessor] = true;
+        partial_accessors["->" + accessor] = true;
+        partial_accessors["<-" + accessor] = true;
+      }
     }
   }
   families.push(new_tags);

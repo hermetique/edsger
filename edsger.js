@@ -1211,6 +1211,7 @@ function extract_free(expr, env=[]) {
         case "int": break;
         case "num": break;
         case "str": break;
+        case "bytecode": break;
         case "var": case "intvar": case "numvar": case "strvar":
           if (!is_bound(tail[0], env))
             result.push(tail[0]);

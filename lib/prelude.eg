@@ -64,7 +64,7 @@ _ _ or ≡ true
 
 a number b number = ≡ a b - num->bool where
   0 num->bool ≡ true
-  a num->bool ≡ false
+  _ num->bool ≡ false
 
 true true = ≡ false false = ≡ true
 true false = ≡ false true = ≡ false

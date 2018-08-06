@@ -402,9 +402,13 @@ const collapse = (parser, tokens, repl_mode=false) => {
 }
 
 // complete parser. [Token] -> [AST] or throw
+const parser = definition.or(import_statement).or(datadef).or(do_block).many();
 const parse = (tokens, repl_mode=false) =>
-                collapse(definition.or(import_statement).or(datadef).or(do_block).many(),
-                         tokens, repl_mode);
+                collapse(parser, tokens, repl_mode);
+
+//let s = "l == (nil 1 f where f == cons)";
+//console.log(definition.parse(lex(preprocess(s))));
+//process.exit();
 
 // -------------------- bytecode vm --------------------
 
@@ -2011,6 +2015,8 @@ function interpret_file(src, search_path=false) {
 function debug_interpret(s) {
   console.log("---------- desugared ----------");
   console.log(preprocess(s));
+  console.log("---------- tokenized ----------");
+  console.log(JSON.stringify(lex(preprocess(s))));
   console.log("---------- ast ----------");
   console.log(JSON.stringify(parse(lex(preprocess(s)))));
   console.log("---------- bytecode ----------");

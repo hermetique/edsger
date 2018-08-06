@@ -218,7 +218,7 @@ Some unicode characters get replaced with ascii approximations during preprocess
 - `←` becomes `<-`
 - `≠` becomes `/=`
 
-A `where` clause defines local bindings:
+A `where` clause defines local bindings for a function definition:
 ```haskell
 n fib == 1 1 n fib' instead where
   _ a instead == a

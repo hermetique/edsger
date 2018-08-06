@@ -34,7 +34,7 @@ a itself show ≡ a show " itself" ++
 a left show ≡ a show " left" ++
 a right show ≡ a show " right" ++
 nil show ≡ "[]"
-a b cons show ≡ a show ":" ++ b show ++
+a b cons show ≡ a show " : " ++ b show ++
 
 # map
 
@@ -47,9 +47,6 @@ a b cons f map ≡ a f map b f . cons
 
 # predicates
 
-0 num->bool ≡ false
-a number num->bool ≡ true
-
 false not ≡ true
 true not ≡ false
 
@@ -59,8 +56,23 @@ _ _ and ≡ false
 false false or ≡ false
 _ _ or ≡ true
 
-/= ≡ - num->bool
-= ≡ /= not
+# equality
+
+a number b number = ≡ a b - num->bool where
+  0 num->bool ≡ true
+  a number num->bool ≡ false
+true true = ≡ false false = ≡ true
+true false = ≡ false true = ≡ false
+a itself b itself = ≡ a b =
+nothing nothing = ≡ true
+_ itself nothing = ≡ nothing _ itself = ≡ false
+a left b left = ≡ a right b right = ≡ a b =
+_ left _ right = ≡ _ right _ left = ≡ false
+nil nil = ≡ true
+nil _ _ cons = ≡ _ _ cons nil = ≡ false
+a b cons c d cons = ≡ b d = a c = and
+
+/= ≡ = not
 
 # conditionals
 

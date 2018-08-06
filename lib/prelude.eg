@@ -27,12 +27,16 @@ data nil | tail head cons
 
 a integer show ≡ a number show ≡ a "" bytecode 20
 a string show ≡ a
+
 true show ≡ "true"
 false show ≡ "false"
+
 nothing show ≡ "nothing"
 a itself show ≡ a show " itself" ++
+
 a left show ≡ a show " left" ++
 a right show ≡ a show " right" ++
+
 nil show ≡ "[]"
 a b cons show ≡ a show " : " ++ b show ++
 
@@ -61,13 +65,17 @@ _ _ or ≡ true
 a number b number = ≡ a b - num->bool where
   0 num->bool ≡ true
   a number num->bool ≡ false
+
 true true = ≡ false false = ≡ true
 true false = ≡ false true = ≡ false
+
 a itself b itself = ≡ a b =
 nothing nothing = ≡ true
 _ itself nothing = ≡ nothing _ itself = ≡ false
+
 a left b left = ≡ a right b right = ≡ a b =
 _ left _ right = ≡ _ right _ left = ≡ false
+
 nil nil = ≡ true
 nil _ _ cons = ≡ _ _ cons nil = ≡ false
 a b cons c d cons = ≡ b d = a c = and

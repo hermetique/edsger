@@ -17,13 +17,13 @@ Useful scripts in this directory:
 Simple values (string and numeric literals) are just pushed onto the stack.
 ```bash
 do 1 2 3
-# [1,2,3]
+# 1 2 3
 ```
 
 Function application is postfix:
 ```bash
 do "hello, " "world" ++
-# ["hello, world"]
+# "hello, world"
 ```
 
 Define functions with `==`:
@@ -32,7 +32,7 @@ Define functions with `==`:
 n tri == n [n 1 -] tri + # square brackets are superfluous; just for visual grouping
 
 do 100 tri
-# [5050]
+# 5050
 ```
 
 Define multiple cases at once by chaining equations together:
@@ -46,26 +46,26 @@ n odd? == n 1 - even?
 Quote by wrapping code in parentheses:
 ```bash
 do (1 +)
-# [[3,0,0,0,1,15]]
+# (3 0 0 0 1 32)
 ```
 
 Unquote using the function application operator `.`:
 ```bash
 do 1 (1 +) .
-# [2]
+# 2
 ```
 
 Define and apply an anonymous function with `\` and `->`:
 ```bash
 do 1 2 \ a b -> b a
-# [2,1]
+# 2 1
 ```
 
 Anonymous functions can also have multiple cases:
 ```bash
 do 1 \ 0 -> "zero"
        _ -> "something else"
-# ["something else"]
+# "something else"
 ```
 
 ## Data types and pattern matching

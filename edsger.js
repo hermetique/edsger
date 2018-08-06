@@ -1,7 +1,7 @@
 // -------------------- lexer + preprocessor --------------------
 
 const path = process.argv[2];
-const is_num = s => !isNaN(s);
+const is_num = s => !Array.isArray(s) && !isNaN(s);
 const is_str = s => typeof s === "string" || s instanceof String;
 const is_space = c => /\s/.test(c);
 const is_open_brace = c => c.length === 1 && /\[|\{|\(/.test(c);
@@ -1953,9 +1953,33 @@ function error2str(e, as_comment=false) {
   return error2lines(e, true).join("\n");
 }
 
+function stack2str() {
+  const item2str = item => {
+    if (is_str(item))
+      return JSON.stringify(item);
+    if (is_num(item))
+      return item.toString();
+    if (!Array.isArray(item))
+      return JSON.stringify(item);
+    if (item.length !== 2 || !Array.isArray(item[1])) // has to be a quote
+      return "(" + item.map(item2str).join(" ") + ")";
+
+    // might be a tag
+    let [maybe_tag, args] = item;
+    if (!tag_bound(maybe_tag))
+      return JSON.stringify(item);
+    let tag = get_tag(maybe_tag);
+    if (args.length === 0)
+      return tag;
+    return "[" + args.map(a => item2str(a) + " ").join("") + tag + "]";
+  };
+
+  return stack.map(item2str).join(" ");
+}
+
 function print(as_comment=false) {
   const prefix = as_comment ? "# " : "";
-  console.log(prefix + JSON.stringify(stack));
+  console.log(prefix + stack2str());
   //console.log("families =", families, "tags =", tags);
 }
 

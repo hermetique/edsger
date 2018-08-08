@@ -19,8 +19,8 @@ n integer base ind nat-rec ≡ [n 1 -] base ind nat-rec n ind .
 # data types
 
 data true | false
-data nothing | _ itself
-data _ left | _ right
+data nothing | from-itself itself
+data from-left left | from-right right
 data nil | init last cons
 
 # pretty printer

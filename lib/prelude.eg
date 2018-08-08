@@ -108,3 +108,7 @@ t h cons a f foldl ≡ [t a f foldl] h f .
 
 nil a ++ ≡ a nil ++ ≡ a
 a b c cons ++ ≡ a b ++ c cons
+
+#nil head ≡ "Tried to extract head of empty list" fail
+nil a cons head ≡ a
+a b cons head ≡ a head

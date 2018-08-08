@@ -1332,11 +1332,16 @@ function check_exhaustive(patterns) {
                     && b.name === this.name
                     && b.args.equals(this.args); }
   }
+  //class RetryWith extends Inference {
+  //  constructor(pattern) { super(false); this.pattern = pattern; }
+  //}
   //let a = new Int({3: true}).promoted();
   //let b = a.satisfied();
   //console.log(a.toString(), b.toString());
 
-  // either combine a type with a case to make an updated type, or return null if not possible
+  // either combine a type with a case to make an updated type or
+  //   return null if not possible
+  //   return undefined if not possible and one of the wildcards needs to be instantiated to something else
   const unify = (pattern, pair) => {
     // empty sequences always match
     if (Array.isArray(pattern) && pattern.length === 0 && pair instanceof Row && pair.empty())
@@ -1348,6 +1353,8 @@ function check_exhaustive(patterns) {
       let satisfied = true;
       for (let i = 0; i < pattern.length; ++i) {
         let tmp = unify(pattern[i], pair.args[i]);
+        if (tmp === undefined)
+          return undefined; // propagate signal that undefined needs instantiation
         if (tmp === null)
           return null; // any item in sequence doesn't match = fail
         tmps.push(tmp);
@@ -1362,11 +1369,11 @@ function check_exhaustive(patterns) {
       return new Row(tmps, satisfied);
     }
 
-    // satisfied wildcard unifies with anything
-    if (pair instanceof Wild && pair.is_satisfied)
-      return pair;
+    // wildcard type satisfiable by variable
+    if (pair instanceof Wild && pattern[0] === "var")
+      return pair.satisfied();
 
-    // variables and wildcards match anything
+    // variables and wildcards match any type
     if (pattern[0] === "var" || pattern[0] === "wild")
       return pair.satisfied();
 
@@ -1395,7 +1402,7 @@ function check_exhaustive(patterns) {
                    ? null // incompatible types
                    : pair.with_value(pattern[1]); // add the value to the set
 
-      // pattern variable
+      // typed pattern variable
       else if (pattern[0] === pat + "var")
         return pair instanceof Wild && !pair.is_satisfied
                  ? new tag().satisfied() // instantiate + satisfy wildcards
@@ -1404,7 +1411,11 @@ function check_exhaustive(patterns) {
                    : pair.satisfied(); // variables can satisfy infinite no. of values
     }
 
-    // arbitrary tags: check if tags match
+    // arbitrary tags: if wildcard, return undefined to signal that type needs to be reinferred
+    if (pair instanceof Wild)
+      return undefined;
+    
+    // check if tags match
     if (!tag_bound(pattern[0]))
       throw "Bad pattern tag `" + pattern[0] + "'";
     let pattern_tag = get_tag(pattern[0]);
@@ -1414,6 +1425,8 @@ function check_exhaustive(patterns) {
     
     // check if args match
     let args_unified = unify(pattern[1], pair.args);
+    if (args_unified === undefined)
+      return undefined;
     if (args_unified === null)
       return null;
     let result = new Tag(pair.name, args_unified);
@@ -1466,6 +1479,12 @@ function check_exhaustive(patterns) {
     }
   };
 
+  //console.log();
+  //console.log();
+  //console.log();
+  //console.log();
+  //console.log();
+
   if (patterns.length === 0)
     return; // no patterns = exhaustive
 
@@ -1478,38 +1497,47 @@ function check_exhaustive(patterns) {
 
   let inferred = infer_from(patterns[0]);
   for (let i = 0; i < patterns.length; ++i) {
+    let new_inferred = [];
     let success = false;
-    let not_unreachable = false;
+    let reachable = false;
 
+    //console.log();
     for (let j = 0; j < inferred.length; ++j) {
       //console.log("trying to unify ", pattern2str(patterns[i]), "with", inferred[j].toString());
       let new_inference = unify(patterns[i], inferred[j]);
       //console.log("inferred[j] =", inferred[j].toString(), "new_inference =",
-      //            new_inference === null ? null : new_inference.toString());
-      //if (new_inference !== null) {
+      //            new_inference === null || new_inference === undefined
+      //              ? new_inference
+      //              : new_inference.toString());
+      //if (new_inference !== null && new_inference !== undefined)
       //  console.log("new_inference.equals(inferred[j]) =", new_inference.equals(inferred[j]));
-      //}
 
-      // a clause is not unreachable if
+      // a clause is reachable if
       //   (exists inference where unification succeeds AND an update is made)
-      not_unreachable = not_unreachable || (new_inference !== null && !new_inference.equals(inferred[j]));
-      //console.log("now not_unreachable =", not_unreachable);
+      reachable = reachable || (new_inference !== null &&
+                                new_inference !== undefined &&
+                                !new_inference.equals(inferred[j]));
+      //console.log("now reachable =", reachable);
 
-      if (new_inference !== null) {
-        inferred[j] = new_inference;
+      if (new_inference === null)
+        new_inferred.push(inferred[j]);
+      else if (new_inference !== undefined) {
+        new_inferred.push(new_inference);
         success = true;
         // can't break early because the new pattern could close more than 1 inferred type
         // e.g. 'a 'b 'c would close int int int, str str str, str int str, etc.
       }
     }
 
-    //console.log("success =", success, "not_unreachable =", not_unreachable, "pattern =", pattern2str(patterns[i]));
+    inferred = new_inferred;
+
+    //console.log("success =", success, "reachable =", reachable, "pattern =", pattern2str(patterns[i]));
     //console.log("after: inferred =", inferred.map(a => a.toString()).join(" | "));
 
-    // a clause is not unreachable if
+    // a clause is reachable if
     //   (forall inference, unification fails)
-    not_unreachable = not_unreachable || !success;
-    if (!not_unreachable)
+    reachable = reachable || !success;
+    if (!reachable)
       throw ["Pattern " + pattern2str(patterns[i]) + " is unreachable.",
              "Previous patterns were:", patterns.slice(0, i).map(pattern2str)];
 

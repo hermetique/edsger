@@ -21,7 +21,7 @@ n integer base ind nat-rec ≡ [n 1 -] base ind nat-rec n ind .
 data true | false
 data nothing | _ itself
 data _ left | _ right
-data nil | tail head cons
+data nil | init last cons
 
 # pretty printer
 
@@ -103,3 +103,8 @@ t h cons a f foldr ≡ t [h a f .] f foldr
 
 nil a f foldl ≡ a
 t h cons a f foldl ≡ [t a f foldl] h f .
+
+# list operations
+
+nil a ++ ≡ a nil ++ ≡ a
+a b c cons ++ ≡ a b ++ c cons

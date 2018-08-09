@@ -111,10 +111,10 @@ t h cons a f function foldl ≡ [t a f foldl] h f .
 nil a ++ ≡ a nil ++ ≡ a
 a b c cons ++ ≡ a b ++ c cons
 
-nil head ≡ "Tried to extract head of empty list" fail
+nil head ≡ "head of empty list" fail
 nil a cons head ≡ a
 a b cons head ≡ a head
 
-nil tail ≡ "Tried to extract tail of empty list" fail
+nil tail ≡ "tail of empty list" fail
 nil a cons tail ≡ nil
 a b cons tail ≡ a tail b cons

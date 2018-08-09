@@ -151,9 +151,9 @@ bad == \ nil -> 1
 #   In a definition of `bad':
 #     In a lambda expression:
 #       Patterns are not exhaustive:
-#         (nil)
+#         [nil]
 #       The following inferred cases are not satisfied:
-#         (_? _? cons?)
+#         [_? _? cons?]
 ```
 Conversely, the final pattern in this lambda expression is unreachable, since numbers include integers:
 ```bash
@@ -161,9 +161,9 @@ bad == \ a number -> "got number"; a integer -> "got integer"
 # Error:
 #   In a definition of `bad':
 #     In a lambda expression:
-#       Pattern (1 intvar) is unreachable.
+#       Pattern ['1 integer] is unreachable.
 #       Previous patterns were:
-#         (1 numvar)
+#         ['1 number]
 ```
 
 Inference is recursive--for example, the compiler infers the type "optional list whose first item (if it exists) is an integer" for the following lambda expression:
@@ -173,12 +173,12 @@ bad == \ nil 3 cons itself -> 1
 #   In a definition of `bad':
 #     In a lambda expression:
 #       Patterns are not exhaustive:
-#         (((nil) (3 int) cons) itself)
+#         [[[nil] [3 int] cons] itself]
 #       The following inferred cases are not satisfied:
 #         nothing?
-#         (nil? itself?)
-#         ((nil? (integer? ≠ 3) cons?) itself?)
-#         (((_? _? cons?) integer? cons?) itself?)
+#         [nil? itself?]
+#         [[nil? [integer? ≠ 3] cons?] itself?]
+#         [[[_? _? cons?] integer? cons?] itself?]
 ```
 
 Since new cases can be added to function definitions at any time, function definitions are only checked 
@@ -198,15 +198,15 @@ gives
 Error:
   In the definition of `bad':
     Patterns are not exhaustive:
-      (nil)
-      (1 int)
-      (false)
-      (abc str)
+      [nil]
+      [1 int]
+      [false]
+      [abc str]
     The following inferred cases are not satisfied:
-      (_? _? cons?)
-      (integer? ≠ 1)
+      [_? _? cons?]
+      [integer? ≠ 1]
       true?
-      (string? ≠ "abc")
+      [string? ≠ abc]
 ```
 
 ## Miscellaneous

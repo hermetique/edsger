@@ -1,4 +1,4 @@
-. ≡ bytecode 7
+a function . ≡ bytecode 9 1 7
 a number b number + ≡ bytecode 9 2 9 1 16
 a number b number * ≡ bytecode 9 2 9 1 17
 a number b number - ≡ bytecode 9 2 9 1 18

@@ -1285,11 +1285,11 @@ function check_exhaustive(patterns) {
     constructor(values, is_satisfied=false) { super(is_satisfied); this.values = values; }
     with_value(v) { let copy = this.copy(); copy.values[v] = true; return copy; }
     contains(v) { return v in this.values; }
-    toString(parser) {
+    toString(stringifier) {
       let keys = Object.keys(this.values)
       let qualifier = ""
       if (keys.length !== 0)
-        qualifier = " ≠ " + Object.keys(this.values).map(a => JSON.stringify(parser(a))).join(" ")
+        qualifier = " ≠ " + Object.keys(this.values).map(stringifier).join(" ")
       return super.toString() + qualifier
     }
     copy() { return new LitInference(dict_copy(this.values), this.is_satisfied); }
@@ -1297,7 +1297,7 @@ function check_exhaustive(patterns) {
   class Fun extends LitInference {
     constructor(values={}, is_satisfied=false) { super(values, is_satisfied); }
     toString() {
-      let suffix = "function" + super.toString(a => a)
+      let suffix = "function" + super.toString(a => "(" + a.replace(/,/g, " ") + ")")
       return dict_empty(this.values) ? suffix : "(" + suffix + ")"
     }
     copy() { return new Fun(dict_copy(this.values), this.is_satisfied); }
@@ -1309,7 +1309,7 @@ function check_exhaustive(patterns) {
     constructor(values={}, is_satisfied=false) { super(values, is_satisfied); }
     promoted(v) { return new Num(this.values, this.is_satisfied, false); }
     toString() {
-      let suffix = "integer" + super.toString(parseInt)
+      let suffix = "integer" + super.toString(a => parseInt(a).toString())
       return dict_empty(this.values) ? suffix : "(" + suffix + ")"
     }
     copy() { return new Int(dict_copy(this.values), this.is_satisfied); }
@@ -1324,7 +1324,7 @@ function check_exhaustive(patterns) {
     }
     contains(v) { return super.contains(v) || (this.has_integers && Number.isInteger(parseFloat(v))); }
     toString() {
-      let suffix = "number" + super.toString(parseFloat)
+      let suffix = "number" + super.toString(a => parseFloat(a).toString())
       return dict_empty(this.values)
                ? (this.has_integers
                     ? "(" + suffix + " /= any integer)"

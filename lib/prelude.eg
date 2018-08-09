@@ -51,6 +51,16 @@ a right f function map ≡ a f . right
 nil _ function map ≡ nil
 a b cons f function map ≡ a f map b f . cons
 
+# list operations
+
+nil head ≡ "head of empty list" fail
+nil a cons head ≡ a
+a b cons head ≡ a head
+
+nil tail ≡ "tail of empty list" fail
+nil a cons tail ≡ nil
+a b cons tail ≡ a tail b cons
+
 # predicates
 
 false not ≡ true
@@ -106,15 +116,14 @@ t h cons a f function foldr ≡ t [h a f .] f foldr
 nil a f function foldl ≡ a
 t h cons a f function foldl ≡ [t a f foldl] h f .
 
-# list operations
+# monoids
+
+a number b number ++ ≡ a b +
+
+a function b function ++ ≡ (a . b .)
+
+nothing nothing ++ ≡ nothing _ itself ++ ≡ _ itself nothing ++ ≡ nothing
+a itself b itself ++ ≡ a b ++ itself
 
 nil a ++ ≡ a nil ++ ≡ a
 a b c cons ++ ≡ a b ++ c cons
-
-nil head ≡ "head of empty list" fail
-nil a cons head ≡ a
-a b cons head ≡ a head
-
-nil tail ≡ "tail of empty list" fail
-nil a cons tail ≡ nil
-a b cons tail ≡ a tail b cons

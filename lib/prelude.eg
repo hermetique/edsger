@@ -10,11 +10,11 @@ a dup ≡ a a
 
 a b swap ≡ b a
 
-f 1 rep ≡ f .
-f n integer rep ≡ f . f n 1 - rep
+f function 1 rep ≡ f .
+f function n integer rep ≡ f . f n 1 - rep
 
-0 base ind nat-rec ≡ base
-n integer base ind nat-rec ≡ [n 1 -] base ind nat-rec n ind .
+0 base ind function nat-rec ≡ base
+n integer base ind function nat-rec ≡ [n 1 -] base ind nat-rec n ind .
 
 # data types
 
@@ -42,12 +42,12 @@ a b cons show ≡ a show " : " ++ b show ++
 
 # map
 
-nothing f map ≡ nothing
-a itself f map ≡ a f . itself
-a left f map ≡ a left
-a right f map ≡ a f . right
-nil f map ≡ nil
-a b cons f map ≡ a f map b f . cons
+nothing f function map ≡ nothing
+a itself f function map ≡ a f . itself
+a left f function map ≡ a left
+a right f function map ≡ a f . right
+nil f function map ≡ nil
+a b cons f function map ≡ a f map b f . cons
 
 # predicates
 
@@ -84,25 +84,25 @@ a b cons c d cons = ≡ b d = a c = and
 
 # conditionals
 
-true b c ite ≡ b .
-false b c ite ≡ c .
+true b function c function ite ≡ b .
+false b function c function ite ≡ c .
 
-a b when ≡ a b () ite
+a function b function when ≡ a b () ite
 
-a b unless ≡ a () b ite
+a function b function unless ≡ a () b ite
 
 # filter
 
-nil f filter ≡ nil
-a b cons f filter ≡ a f filter b f . (b cons) when
+nil f function filter ≡ nil
+a b cons f function filter ≡ a f filter b f . (b cons) when
 
 # folds
 
-nil a f foldr ≡ a
-t h cons a f foldr ≡ t [h a f .] f foldr
+nil a f function foldr ≡ a
+t h cons a f function foldr ≡ t [h a f .] f foldr
 
-nil a f foldl ≡ a
-t h cons a f foldl ≡ [t a f foldl] h f .
+nil a f function foldl ≡ a
+t h cons a f function foldl ≡ [t a f foldl] h f .
 
 # list operations
 

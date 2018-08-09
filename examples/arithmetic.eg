@@ -3,8 +3,8 @@ import base
 # combinator for linear recursion on natural numbers
 # base is f(0)
 # ind sends f(n - 1), n to f(n)
-0 base ind natrec ≡ base
-n base ind natrec ≡ [n 1 -] base ind natrec n ind .
+0 base ind function natrec ≡ base
+n base ind function natrec ≡ [n 1 -] base ind natrec n ind .
 
 # factorial and triangular numbers
 fac ≡ 1 (*) natrec
@@ -17,8 +17,8 @@ n fib ≡ 1 1 n fib' instead where
   a b n fib' ≡ [a b +] a [n 1 -] fib'
 
 # compute some function f for all nats <= n
-0 f demo ≡ 0 f .
-n f demo ≡ [n 1 -] f demo n f .
+0 f function demo ≡ 0 f .
+n f function demo ≡ [n 1 -] f demo n f .
 
 # some computations
 do

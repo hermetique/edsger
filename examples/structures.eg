@@ -7,7 +7,7 @@ data nil | tail head cons
 data _ leaf | left right branch
 
 # convert to string
-a number show ≡ a integer show ≡ a string show ≡ a "" bytecode 20
+a integer show ≡ a number show ≡ a string show ≡ a "" bytecode 20
 true show ≡ "true"
 false show ≡ "false"
 nothing show ≡ "nothing"
@@ -35,4 +35,3 @@ n odd? ≡ [n 1 -] even?
 do
   3 itself (1 +) map (2 /) map show
   1 leaf 2 leaf branch 3 leaf 4 leaf branch branch 5 leaf branch (2 *) map show
-  {nil 1 2 3 4 5 6 7 8 9 10 | cons} (even? show) map show

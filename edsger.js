@@ -1983,23 +1983,23 @@ function compile_file(src, dest) {
 // pretty-print a pattern
 function pattern2str(pattern) {
   if (pattern.length === 0)
-    return "()"
+    return "[]"
 
   // variables match anything
   if (pattern[0] === "var")
-    return "(" + pattern[1] + " var)"
+    return "'" + pattern[1]
 
   // integers
   if (pattern[0] === "int")
-    return "(" + pattern[1] + " int)"
+    return "[" + pattern[1] + " int]"
 
   // strings
   if (pattern[0] === "str")
-    return "(" + pattern[1] + " str)"
+    return "[" + pattern[1] + " str]"
 
   // floats
   if (pattern[0] === "num")
-    return "(" + pattern[1] + " num)"
+    return "[" + pattern[1] + " num]"
 
   // wilds
   if (pattern[0] === "wild")
@@ -2007,30 +2007,30 @@ function pattern2str(pattern) {
 
   // integer variables
   if (pattern[0] === "intvar")
-    return "(" + pattern[1] + " intvar)"
+    return "['" + pattern[1] + " integer]"
 
   // string variables
   if (pattern[0] === "strvar")
-    return "(" + pattern[1] + " strvar)"
+    return "['" + pattern[1] + " string]"
 
   // float variables
   if (pattern[0] === "numvar")
-    return "(" + pattern[1] + " numvar)"
+    return "['" + pattern[1] + " number]"
 
   // function variables
   if (pattern[0] === "funvar")
-    return "(" + pattern[1] + " funvar)"
+    return "['" + pattern[1] + " function]"
 
   // functions
   if (pattern[0] === "fun")
-    return "(" + pattern[1].join(" ") + " fun)"
+    return "(" + pattern[1].join(" ") + ")"
 
   // tags are just numbers > 3
   if (!isNaN(pattern[0])) {
     let tag = parseInt(pattern[0])
     if (tag_bound(tag))
       tag = get_tag(tag)
-    return "(" + pattern[1].map(a => pattern2str(a) + " ").join("") + tag.toString() + ")"
+    return "[" + pattern[1].map(a => pattern2str(a) + " ").join("") + tag.toString() + "]"
   }
 
   // array of subpatterns

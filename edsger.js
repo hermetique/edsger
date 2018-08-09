@@ -1115,7 +1115,7 @@ function run(bytes) {
       case op.CLOSURE: {
         let header = encode_closure(get(extract_byte_values))
         let code = get(extract_values)
-        push(header.concat(to_int32(code.length)).concat(code))
+        push([op.CASE_FUN, header.concat(to_int32(code.length)).concat(code)]);
       } break
       case op.QUOTE: { let code = get(extract_values); push([op.CASE_FUN, code]) } break
       case op.APP: run(item()[1]); break

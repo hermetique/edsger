@@ -1541,13 +1541,15 @@ function check_exhaustive(patterns) {
   }
 
   let inferred = patterns.map(infer_from).reduce((a, b) => a.concat(b))
-  let without_duplicates = []
-  for (const i of inferred)
-    if (without_duplicates.map(a => !a.equals(i)).reduce((a, b) => a && b, true))
-      without_duplicates.push(i)
-  inferred = without_duplicates
-
   for (let i = 0; i < patterns.length; ++i) {
+    // eliminate any duplicates from the previous pass or from the original inferred types
+    let without_duplicates = []
+    for (const i of inferred)
+      if (without_duplicates.map(a => !a.equals(i)).reduce((a, b) => a && b, true))
+        without_duplicates.push(i)
+    inferred = without_duplicates
+
+    // construct new inferred types in new_inferred
     let new_inferred = []
     let success = false
     let reachable = false
@@ -1572,9 +1574,7 @@ function check_exhaustive(patterns) {
 
       if (new_inference === null)
         new_inferred.push(inferred[j])
-      else if (new_inference === undefined) {
-        //new_inferred.push(new_inference);// = new_inferred.concat(infer_from(patterns[i]))
-      } else {
+      else if (new_inference !== undefined) {
         new_inferred.push(new_inference)
         success = true
         // can't break early because the new pattern could close more than 1 inferred type

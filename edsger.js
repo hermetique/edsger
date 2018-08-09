@@ -1118,7 +1118,7 @@ function run(bytes) {
         push(header.concat(to_int32(code.length)).concat(code))
       } break
       case op.QUOTE: { let code = get(extract_values); push([op.CASE_FUN, code]) } break
-      case op.APP: run(item()); break
+      case op.APP: run(item()[1]); break
       case op.TRANSFER: { let n = get(extract_byte); transfer(n); } break
       case op.LOAD: { let n = get(extract_byte); load(n); } break
       case op.DISCARD: { let n = get(extract_byte); discard(n); } break
@@ -2060,8 +2060,8 @@ function stack2str() {
       return item.toString()
     if (!Array.isArray(item))
       return JSON.stringify(item)
-    if (item.length !== 2 || !Array.isArray(item[1])) // has to be a quote
-      return "(" + item.map(item2str).join(" ") + ")"
+    if (item[0] === op.CASE_FUN)
+      return "(" + item[1].join(" ") + ")"
 
     // might be a tag
     let [maybe_tag, args] = item

@@ -759,15 +759,15 @@ function extract_pattern(arity) {
       case op.CASE_WILD:
         return [["wild"], i]
       case op.CASE_INTV: {
-        const id = get(extract_byte) + 1
+        const id = get(extract_byte)
         return [["intvar", id], i]
       }
       case op.CASE_STRV: {
-        const id = get(extract_byte) + 1
+        const id = get(extract_byte)
         return [["strvar", id], i]
       }
       case op.CASE_FLOATV: {
-        const id = get(extract_byte) + 1
+        const id = get(extract_byte)
         return [["numvar", id], i]
       }
       case op.CASE_FUN: {
@@ -776,7 +776,7 @@ function extract_pattern(arity) {
         return [["fun", values], i]
       }
       case op.CASE_FUNV: {
-        const id = get(extract_byte) + 1
+        const id = get(extract_byte)
         return [["funvar", id], i]
       }
       default: {
@@ -1659,7 +1659,7 @@ function compile_pattern(pattern, env=[]) {
         if (arg[0] === op.CASE_WILD)
           result.push([primitive_tags[tag], 0])
         else
-          result.push([primitive_tags[tag], arg[1]])
+          result.push([primitive_tags[tag], arg[1] + 1])
         //console.log("result =", result);
       }
       
@@ -1703,18 +1703,6 @@ function compile_pattern(pattern, env=[]) {
         case "str": {
           let str = tail[0]
           result.push([op.CASE_STR].concat(encode_string(str)))
-        } break
-        case "intvar": {
-          let var_name = tail[0]
-          result.push([op.CASE_INTV].concat(to_var_id(var_name, env)))
-        } break
-        case "numvar": {
-          let var_name = tail[0]
-          result.push([op.CASE_FLOATV].concat(to_var_id(var_name, env)))
-        } break
-        case "strvar": {
-          let var_name = tail[0]
-          result.push([op.CASE_STRV].concat(to_var_id(var_name, env)))
         } break
         case "quote": {
           let code = compile_quote(pat, []) // function patterns cannot depend on env

@@ -99,14 +99,17 @@ nil f map == nil
 t h cons f map == t f map h f . cons
 ```
 
-The primitive types `integer`, `number`, and `string` have corresponding unary tags, which let you match on them
-as well:
+The primitive types `integer`, `number`, `string`, and `function` have corresponding unary tags,
+which let you match on them as well:
 ```haskell
 a integer f == "got an integer"
 a number f == "got a number"
-a string f == "got a string"
+"abc" f == "got the string `abc'"
+(1 +) f == "got a successor function"
+a function f == "got a function"
 _ f == "got something else"
 ```
+Pattern matching on functions just compares compiled bytecode.
 
 If the underscores in a data declaration are replaced with an identifier `id`, that identifier
 can be used like a record field.

@@ -87,9 +87,9 @@ a b cons c d cons = ≡ b d = a c = and
 true b function c function ite ≡ b .
 false b function c function ite ≡ c .
 
-a function b function when ≡ a b () ite
+a b function when ≡ a b () ite
 
-a function b function unless ≡ a () b ite
+a b function unless ≡ a () b ite
 
 # filter
 

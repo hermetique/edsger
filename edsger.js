@@ -1713,7 +1713,7 @@ function compile_pattern(pattern, env=[]) {
           result.push([op.CASE_STRV].concat(to_var_id(var_name, env)))
         } break
         case "quote": {
-          let code = compile_quote(pat, env)
+          let code = compile_quote(pat, []) // function patterns cannot depend on env
           result.push([op.CASE_FUN, code])
         } break
       }
@@ -1772,6 +1772,7 @@ function compile_lambda(lambda, env=[], exhaustive_check=true) {
 
   if (exhaustive_check) {
     try {
+      //console.log("checking patterns =", patterns.map(pattern2str))
       check_exhaustive(patterns)
     } catch (e) {
       throw ["In a lambda expression:", e]
@@ -2191,6 +2192,6 @@ switch (process.argv[3]) {
 //debug_interpret(s)
 //print(stack)
 
-//debug_interpret("do (0) λ (1) → 1; f function → 0")
+//debug_interpret("do λ (1 +) → 1")
 //debug_interpret("do λ 0 → 1; a → 2")
 //debug_interpret("do λ a b function → 1")

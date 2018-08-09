@@ -105,9 +105,9 @@ which let you match on them as well:
 a integer f == "got an integer"
 a number f == "got a number"
 "abc" f == "got the string `abc'"
+a string f == "got a string"
 (1 +) f == "got a successor function"
 a function f == "got a function"
-_ f == "got something else"
 ```
 Pattern matching on functions just compares compiled bytecode.
 

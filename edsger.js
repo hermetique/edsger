@@ -1342,7 +1342,7 @@ function check_exhaustive(patterns) {
   }
   class Str extends LitInference {
     constructor(values={}, is_satisfied=false) { super(values, is_satisfied); }
-    toString() { return "[string" + super.toString(a => a) + "]"; }
+    toString() { return "[string" + super.toString(a => JSON.stringify(a)) + "]"; }
     copy() { return new Str(dict_copy(this.values), this.is_satisfied); }
     equals(b) { return b instanceof Str
                     && b.is_satisfied === this.is_satisfied

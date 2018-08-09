@@ -1298,7 +1298,7 @@ function check_exhaustive(patterns) {
     constructor(values={}, is_satisfied=false) { super(values, is_satisfied); }
     toString() {
       let suffix = "function" + super.toString(a => "(" + a.replace(/,/g, " ") + ")")
-      return dict_empty(this.values) ? suffix : "(" + suffix + ")"
+      return dict_empty(this.values) ? suffix : "[" + suffix + "]"
     }
     copy() { return new Fun(dict_copy(this.values), this.is_satisfied); }
     equals(b) { return b instanceof Fun
@@ -1310,7 +1310,7 @@ function check_exhaustive(patterns) {
     promoted(v) { return new Num(this.values, this.is_satisfied, false); }
     toString() {
       let suffix = "integer" + super.toString(a => parseInt(a).toString())
-      return dict_empty(this.values) ? suffix : "(" + suffix + ")"
+      return dict_empty(this.values) ? suffix : "[" + suffix + "]"
     }
     copy() { return new Int(dict_copy(this.values), this.is_satisfied); }
     equals(b) { return b instanceof Int
@@ -1327,11 +1327,11 @@ function check_exhaustive(patterns) {
       let suffix = "number" + super.toString(a => parseFloat(a).toString())
       return dict_empty(this.values)
                ? (this.has_integers
-                    ? "(" + suffix + " /= any integer)"
+                    ? "[" + suffix + " /= any integer]"
                     : suffix)
                : (this.has_integers
-                    ? "(" + suffix + " or any integer)"
-                    : "(" + suffix + ")")
+                    ? "[" + suffix + " or any integer]"
+                    : "[" + suffix + "]")
     }
     copy() { return new Num(dict_copy(this.values), this.is_satisfied, this.has_integers); }
     with_integers() { let copy = this.copy(); copy.has_integers = true; return copy; }
@@ -1342,7 +1342,7 @@ function check_exhaustive(patterns) {
   }
   class Str extends LitInference {
     constructor(values={}, is_satisfied=false) { super(values, is_satisfied); }
-    toString() { return "(string" + super.toString(a => a) + ")"; }
+    toString() { return "[string" + super.toString(a => a) + "]"; }
     copy() { return new Str(dict_copy(this.values), this.is_satisfied); }
     equals(b) { return b instanceof Str
                     && b.is_satisfied === this.is_satisfied
@@ -1368,7 +1368,7 @@ function check_exhaustive(patterns) {
     constructor(name, args, is_satisfied=false) { super(is_satisfied); this.name = name; this.args = args; }
     toString() {
       let suffix = this.name + super.toString()
-      return this.args.empty() ? suffix : "(" + this.args.toString() + " " + suffix + ")"
+      return this.args.empty() ? suffix : "[" + this.args.toString() + " " + suffix + "]"
     }
     copy() { return new Tag(this.name, this.args.copy(), this.is_satisfied); }
     empty() { return this.args.empty(); }

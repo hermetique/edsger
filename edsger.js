@@ -776,7 +776,7 @@ function extract_pattern(arity) {
         return [["fun", values], i]
       }
       case op.CASE_FUNV: {
-        const id = get(extract_byte)
+        const id = get(extract_byte) + 1
         return [["funvar", id], i]
       }
       default: {
@@ -2193,3 +2193,4 @@ switch (process.argv[3]) {
 
 //debug_interpret("do (0) λ (1) → 1; f function → 0")
 //debug_interpret("do λ 0 → 1; a → 2")
+debug_interpret("do λ a b function → 1")

@@ -18,12 +18,12 @@ nil show ≡ "[]"
 t h cons show ≡ t show ":" ++ h ++
 
 # structure preserving transformation
-nothing f map ≡ nothing
-a itself f map ≡ [a f .] itself
-nil f map ≡ nil
-t h cons f map ≡ [t f map] [h f .] cons
-a leaf f map ≡ [a f .] leaf
-a b branch f map ≡ [a f map] [b f map] branch
+nothing f function map ≡ nothing
+a itself f function map ≡ [a f .] itself
+nil f function map ≡ nil
+t h cons f function map ≡ [t f map] [h f .] cons
+a leaf f function map ≡ [a f .] leaf
+a b branch f function map ≡ [a f map] [b f map] branch
 
 # check parity of a natural number
 0 even? ≡ 1 odd? ≡ true
@@ -33,5 +33,5 @@ n odd? ≡ [n 1 -] even?
 
 # some computations
 do
-  3 itself (1 +) map (2 /) map show
-  1 leaf 2 leaf branch 3 leaf 4 leaf branch branch 5 leaf branch (2 *) map show
+  3 itself (1 +) map #(2 /) map show
+  #1 leaf 2 leaf branch 3 leaf 4 leaf branch branch 5 leaf branch (2 *) map show

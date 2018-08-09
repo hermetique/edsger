@@ -1653,9 +1653,13 @@ function compile_pattern(pattern, env=[]) {
         if (result.length === 0)
           throw ["Bad pattern: primitive tag `" + tag + "' expects a variable but got nothing"]
         const arg = result.pop()
-        if (!Array.isArray(arg) || arg[0] !== op.CASE_VAR)
-          throw ["Bad pattern: primitive tag `" + tag + "' expects a variable but got " + arg]; // TODO: pretty-print arg
-        result.push([primitive_tags[tag], arg[1]])
+        if (!Array.isArray(arg) || (arg[0] !== op.CASE_VAR && arg[0] !== op.CASE_WILD))
+          throw ["Bad pattern: primitive tag `" + tag + "' expects a variable but got " + arg] // TODO: pretty-print arg
+
+        if (arg[0] === op.CASE_WILD)
+          result.push([primitive_tags[tag], 0])
+        else
+          result.push([primitive_tags[tag], arg[1]])
         //console.log("result =", result);
       }
       

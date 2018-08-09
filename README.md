@@ -125,12 +125,12 @@ t h cons f map == t f map h f . cons
 The primitive types `integer`, `number`, `string`, and `function` have corresponding unary tags,
 which let you match on them as well:
 ```haskell
-a integer f == "got an integer"
-a number f == "got a number"
+_ integer f == "got an integer"
+_ number f == "got a number"
 "abc" f == "got the string `abc'"
-a string f == "got a string"
+_ string f == "got a string"
 (1 +) f == "got a successor function"
-a function f == "got a function"
+_ function f == "got a function"
 ```
 Pattern matching on functions just compares compiled bytecode.
 

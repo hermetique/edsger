@@ -42,11 +42,13 @@ a b cons show ≡ a show " : " ++ b show ++
 
 # map
 
-nothing f function map ≡ nothing
+nothing _ function map ≡ nothing
 a itself f function map ≡ a f . itself
-a left f function map ≡ a left
+
+a left _ function map ≡ a left
 a right f function map ≡ a f . right
-nil f function map ≡ nil
+
+nil _ function map ≡ nil
 a b cons f function map ≡ a f map b f . cons
 
 # predicates

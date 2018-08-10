@@ -1087,7 +1087,8 @@ function run_case(bytes, i) {
   }
 
   if (!done)
-    throw ["Pattern match failed. Cases considered:", patterns.map(pattern2str)]
+    throw ["Pattern match failed. Tried:", patterns.map(pattern2str),
+           "But got:", [stack2str(stack.slice(-arity))]]
 
   return i
 }
@@ -2031,7 +2032,7 @@ function pattern2str(pattern) {
 
 
 // pretty-print an error
-function error2str(e, as_comment=false) {
+function error2str(e, as_comment=false, in_full=false) {
   const error2lines = (e, root) => {
     if (!Array.isArray(e))
       return [e]
@@ -2045,7 +2046,7 @@ function error2str(e, as_comment=false) {
   return error2lines(e, true).join("\n")
 }
 
-function stack2str() {
+function stack2str(items) {
   const item2str = item => {
     if (is_str(item))
       return JSON.stringify(item)
@@ -2066,12 +2067,12 @@ function stack2str() {
     return "[" + args.map(a => item2str(a) + " ").join("") + tag + "]"
   }
 
-  return stack.map(item2str).join(" ")
+  return items.map(item2str).join(" ")
 }
 
 function print(as_comment=false) {
   const prefix = as_comment ? "# " : ""
-  console.log(prefix + stack2str())
+  console.log(prefix + stack2str(stack))
   //console.log("families =", families, "tags =", tags)
 }
 

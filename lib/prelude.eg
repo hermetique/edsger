@@ -120,7 +120,7 @@ t h cons a f function foldl ≡ [t a f foldl] h f .
 
 a number b number ++ ≡ a b +
 
-a function b function ++ ≡ (a . b .)
+a function b function ++ ≡ a . b .
 
 nothing nothing ++ ≡ nothing _ itself ++ ≡ _ itself nothing ++ ≡ nothing
 a itself b itself ++ ≡ a b ++ itself

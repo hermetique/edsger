@@ -7,6 +7,7 @@ end
 
 syn keyword egimports import
 syn keyword egkeywords data where do bytecode
+syn keyword egspecial get put
 syn keyword egtypes integer number string function
 syn match egvariables "\v'[^ ]+\s|'[^ ]+$"
 syn match egcomment "#.*$"
@@ -19,6 +20,7 @@ let b:current_syntax = "eg"
 hi def link egkeywords Type
 hi def link egvariables Identifier
 hi def link egtypes Identifier
+hi def link egspecial Statement
 " hi def link egnum Constant
 hi def link egstr String
 hi def link egcomment Comment

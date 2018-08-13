@@ -1,7 +1,7 @@
 // -------------------- lexer + preprocessor --------------------
 
 const path = process.argv[2]
-const is_num = s => !Array.isArray(s) && !isNaN(s)
+const is_num = s => typeof s === "number" && !isNaN(s)
 const is_str = s => typeof s === "string" || s instanceof String
 const is_space = c => /\s/.test(c)
 const is_open_brace = c => c.length === 1 && /\[|\{|\(/.test(c)
@@ -318,7 +318,7 @@ const term = one.guard(s => s !== terminator && s !== "where").bind(s => {
     return pure(["var", s.substring(1)])
   else if (s[0] === "\"")
     return pure(["str", unescaped(s)])
-  else if (is_num(s)) {
+  else if (!isNaN(s)) {
     let a = parseFloat(s)
     if (Number.isInteger(a) && !/\./.test(s))
       return pure(["int", parseInt(s)])
@@ -360,8 +360,10 @@ const do_block = exact("do").right(rec_expr.terminated_by(exact(terminator))).bi
                  pure(["expr"].concat(expr)))
 
 // inline bytecode
-const bytecode_block = exact("bytecode").right(one.guard(is_num).terminated_by(exact(terminator))).bind(bytes =>
-                       pure(["bytecode"].concat(bytes)))
+const bytecode_block = exact("bytecode")
+                         .right(one.guard(a => !isNaN(a)).terminated_by(exact(terminator)))
+                         .bind(bytes =>
+                           pure(["bytecode"].concat(bytes)))
 
 // lambda block
 const lambda_char = exact("λ").or(exact("\\"))
@@ -704,7 +706,7 @@ const extract_byte_values = extract_values_with(extract_byte)
 function extract_double(bytes, i=-1) {
   let num
   [num, i] = extract_string(bytes, i)
-  if (is_num(num))
+  if (!isNaN(num))
     return [parseFloat(num), i]
   else
     throw ["Tried to load `" + num + "' as a floating point number"]
@@ -2138,8 +2140,6 @@ function debug_repl() {
 }
 
 function repl() {
-  const prefix = "# "
-
   process.stdin.resume()
   process.stdin.setEncoding("utf8")
   let util = require("util")

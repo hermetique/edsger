@@ -2032,7 +2032,6 @@ function pattern2str(pattern) {
   return pattern.map(pattern2str).join(" ")
 }
 
-
 // pretty-print an error
 function error2str(e, as_comment=false, in_full=false) {
   const error2lines = (e, root) => {
@@ -2159,6 +2158,9 @@ function repl() {
   })
 }
 
+// for template literals
+function edsger(s) { interpret(s[0]); return stack2str(stack) }
+
 switch (process.argv[3]) {
   case "debug_repl": debug_repl(node=true); break
   case "repl": repl(); break
@@ -2188,3 +2190,14 @@ switch (process.argv[3]) {
 //debug_interpret("do λ (1 +) → 1")
 //debug_interpret("do λ 0 → 1; a → 2")
 //debug_interpret("do λ a b function → 1")
+
+//console.log(edsger `
+//import prelude
+//data low | mid | high
+//low cyc == mid
+//mid cyc == high
+//high cyc == low
+//
+//do
+//  low cyc cyc
+//`)

@@ -1,4 +1,4 @@
-// -------------------- lexer + preprocessor --------------------
+// -------------------- lexer --------------------
 
 const path = process.argv[2]
 const is_num = s => typeof s === "number" && !isNaN(s)
@@ -91,6 +91,8 @@ function lex(s, with_coords=false) {
 
   return tokens
 }
+
+// -------------------- preprocessor --------------------
 
 // String -> String without comments and with semicolons in place of indentation
 function preprocess(s) {
@@ -412,7 +414,7 @@ const parse = (tokens, repl_mode=false) =>
 //console.log(definition.parse(lex(preprocess(s))))
 //process.exit()
 
-// -------------------- bytecode vm --------------------
+// -------------------- bytecode vm: global state + operations --------------------
 
 // intrinsics
 const op = {
@@ -463,7 +465,7 @@ const op = {
 let n_intrinsics = Object.keys(op).length
 let words = new Array(n_intrinsics).fill([])
 let word_map = {} // { name: bytecode index }
-let partial_accessors = {} // { name: true }. dict of partial accessor functions
+let partial_words = {} // { name: true }. dict of partial accessor functions
 let primitive_tags = { "integer": op.CASE_INTV
                      , "number": op.CASE_FLOATV
                      , "string": op.CASE_STRV
@@ -477,7 +479,7 @@ let tags = {} // { name: { .id .arity .family } }
 let families = [] // [[tags]]
 let imported = {} // track imported files
 
-// simple vm actions
+// vm actions
 function push(a) { stack.push(a) }
 function pop(n=1) { return n === 0 ? [] : stack.splice(-n) }
 function peek() { return stack[stack.length - 1] }
@@ -509,7 +511,7 @@ function bind_tags(arr) {
     tags[tag] = { id, arity, family }
 
     // generate constructor
-    const ctr = id < 256 ? [op.MAKE, id, arity] : [op.MAKE32].concat(to_int32(id)).concat([arity])
+    const ctr = id < 256 ? [op.MAKE, id, arity] : [op.MAKE32].concat(encode_int32(id)).concat([arity])
     bind(tag, ctr)
 
     // generate accessors
@@ -558,9 +560,9 @@ function bind_tags(arr) {
       bind("<-" + accessor, code)
 
       if (arr.length > 1) { // more than 1 case => accessor is partial
-        partial_accessors[accessor] = true
-        partial_accessors["->" + accessor] = true
-        partial_accessors["<-" + accessor] = true
+        partial_words[accessor] = true
+        partial_words["->" + accessor] = true
+        partial_words["<-" + accessor] = true
       }
     }
   }
@@ -615,11 +617,16 @@ function get_word_name(id) {
   return null
 }
 
-// -------------------- bytecode helpers --------------------
+// -------------------- convert between bytecode & string (for localStorage) --------------------
 
 // [Number] -> String
 function encode(bytes) {
   return bytes.map(b => String.fromCharCode(b)).join("")
+}
+
+// String -> [Number]
+function decode(s) {
+  return str2bytes(s)
 }
 
 // String -> [Number]
@@ -630,18 +637,15 @@ function str2bytes(s) {
   return result
 }
 
-// String -> [Number]
-function decode(s) {
-  return str2bytes(s)
-}
+// -------------------- generating bytecode for basic values --------------------
 
-function to_int32(a) {
+function encode_int32(a) {
   return [a >>> 24, (a >>> 16) & 255, (a >>> 8) & 255, a & 255]
 }
 
 function encode_string(s) {
   let bytes = str2bytes(s)
-  return to_int32(bytes.length).concat(bytes)
+  return encode_int32(bytes.length).concat(bytes)
 }
 
 function encode_tagged_value(a) {
@@ -652,7 +656,7 @@ function encode_tagged_value(a) {
 
 function encode_value(a) {
   if (Number.isInteger(a))
-    return [op.IMMINT].concat(to_int32(a))
+    return [op.IMMINT].concat(encode_int32(a))
   if (is_num(a))
     return [op.IMMFLOAT].concat(encode_string(a.toString()))
   if (!Array.isArray(a))
@@ -676,6 +680,8 @@ function encode_closure(refs) {
 
   return header.concat(lambda)
 }
+
+// -------------------- parsing bytecode for basic values --------------------
 
 function extract_byte(bytes, i=-1) {
   return [bytes[i + 1], i + 1]
@@ -821,6 +827,107 @@ function extract_patterns(bytes) {
   return patterns
 }
 
+// -------------------- pretty printers --------------------
+
+// pretty-print a pattern
+function pattern2str(pattern) {
+  if (pattern.length === 0)
+    return "[]"
+
+  // variables match anything
+  if (pattern[0] === "var")
+    return "'" + pattern[1]
+
+  // integers
+  if (pattern[0] === "int")
+    return "[" + pattern[1] + " int]"
+
+  // strings
+  if (pattern[0] === "str")
+    return "[" + pattern[1] + " str]"
+
+  // floats
+  if (pattern[0] === "num")
+    return "[" + pattern[1] + " num]"
+
+  // wilds
+  if (pattern[0] === "wild")
+    return "_"
+
+  // integer variables
+  if (pattern[0] === "intvar")
+    return "['" + pattern[1] + " integer]"
+
+  // string variables
+  if (pattern[0] === "strvar")
+    return "['" + pattern[1] + " string]"
+
+  // float variables
+  if (pattern[0] === "numvar")
+    return "['" + pattern[1] + " number]"
+
+  // function variables
+  if (pattern[0] === "funvar")
+    return "['" + pattern[1] + " function]"
+
+  // functions
+  if (pattern[0] === "fun")
+    return "(" + pattern[1].join(" ") + ")"
+
+  // tags are just numbers > 3
+  if (!isNaN(pattern[0])) {
+    let tag = parseInt(pattern[0])
+    if (tag_bound(tag))
+      tag = get_tag(tag)
+    return "[" + pattern[1].map(a => pattern2str(a) + " ").join("") + tag.toString() + "]"
+  }
+
+  // array of subpatterns
+  return pattern.map(pattern2str).join(" ")
+}
+
+// pretty-print an error
+function error2str(e, as_comment=false, in_full=false) {
+  const error2lines = (e, root) => {
+    if (!Array.isArray(e))
+      return [e]
+    let lines = e.map(a => error2lines(a, false)).reduce((a, b) => a.concat(b), [])
+    if (!root)
+      lines = lines.map(a => "  " + a)
+    if (root && as_comment)
+      lines = lines.map(a => "# " + a)
+    return lines
+  }
+  return error2lines(e, true).join("\n")
+}
+
+// pretty print items on a stack
+function stack2str(items) {
+  const item2str = item => {
+    if (is_str(item))
+      return JSON.stringify(item)
+    if (is_num(item))
+      return item.toString()
+    if (!Array.isArray(item))
+      return JSON.stringify(item)
+    if (item[0] === op.CASE_FUN)
+      return "(" + item[1].join(" ") + ")"
+
+    // might be a tag
+    let [maybe_tag, args] = item
+    if (!tag_bound(maybe_tag))
+      return JSON.stringify(item)
+    let tag = get_tag(maybe_tag)
+    if (args.length === 0)
+      return tag
+    return "[" + args.map(a => item2str(a) + " ").join("") + tag + "]"
+  }
+
+  return items.map(item2str).join(" ")
+}
+
+// -------------------- pattern matching --------------------
+
 function pattern_matches(pattern, item=undefined, accu={}) {
   // empty patterns auto-match
   if (pattern.length === 0)
@@ -933,336 +1040,6 @@ function pattern_matches(pattern, item=undefined, accu={}) {
 function pattern_transfer(matches) {
   for (let i = Object.keys(matches).length; i > 0; --i)
     symbols.push(matches[i])
-}
-
-// opcode -> word name
-function pretty(code) {
-  for (const word in word_map)
-    if (word_map[word] === code)
-      return word
-  return code.toString()
-}
-
-// [Number] -> String
-function disassemble(bytes, indent_by=0) {
-  const indent_width = 2
-
-  let result = []
-  let i
-  const get = f => {
-    let value
-    [value, i] = f(bytes, i)
-    return value
-  }
-  const go = f => put(get(f))
-  const put = s => {
-    if (result.length === 0)
-      result.push("")
-    result[result.length - 1] += s
-  }
-  const brk = () => result.push("")
-
-  for (i = 0; i < bytes.length; ++i) {
-    let b
-    [b, i] = extract_instr(bytes, i)
-
-    let n, values
-    switch (b) {
-      case op.FAIL: put("fail"); brk(); break
-      case op.IMMSTR: put("str "); put(JSON.stringify(get(extract_string))); brk(); break
-      case op.IMMINT: put("int "); go(extract_int32); brk(); break
-      case op.IMMFLOAT: put("float "); go(extract_double); brk(); break
-      case op.CLOSURE: {
-        put("closure ")
-        const n_vars = get(extract_byte)
-        for (let j = 0; j < n_vars; ++j)
-          put(get(extract_byte) + " ")
-        brk()
-        } break
-      case op.QUOTE:
-        put("quote")
-        values = get(extract_values)
-        result = result.concat(disassemble(values, indent_by + indent_width))
-        brk()
-        break
-      case op.APP: put("app"); brk(); break
-      case op.TRANSFER: put("transfer "); go(extract_byte); brk(); break
-      case op.LOAD: put("load "); go(extract_byte); brk(); break
-      case op.DISCARD: put("discard "); go(extract_byte); brk(); break
-      case op.DUP: put("dup"); brk(); break
-      case op.SWAP: put("swap"); brk(); break
-      case op.CASE: {
-        put("case")
-        const n_cases = get(extract_byte)
-        const arity = get(extract_byte)
-        let cases = []
-        for (let j = 0; j < n_cases; ++j) {
-          const pattern = get(extract_pattern(arity))
-          const action = get(extract_values)
-          result = result.concat([" ".repeat(indent_width) + pattern2str(pattern) + " → "])
-                         .concat(disassemble(action, indent_by + indent_width))
-        }
-        brk()
-      } break
-      case op.MAKE: put("make "); go(extract_byte); put(" from "); go(extract_byte); brk(); break
-      case op.MAKE32: put("make "); go(extract_int32); put(" from "); go(extract_byte); brk(); break
-      case op.ADD: put("add"); brk(); break
-      case op.MUL: put("mul"); brk(); break
-      case op.SUB: put("sub"); brk(); break
-      case op.DIV: put("div"); brk(); break
-      case op.CAT: put("cat"); brk(); break
-      default:
-        result.push(pretty(b)); brk(); break
-    }
-  }
-  result = result.filter(s => s.trim() !== "").map(s => " ".repeat(indent_by) + s)
-  return indent_by === 0 ? result.join("\n") : result
-}
-
-function disassemble_header(bytes) {
-  let result = []
-  let word = n_intrinsics
-  let i = 0
-  while (i < bytes.length) {
-    let [size, _] = extract_int32(bytes, i - 1)
-    i += 4
-    result = result.concat(word + ":")
-                   .concat(disassemble(bytes.slice(i, i + size), indent_by=2))
-    i += size
-    ++word
-  }
-  return result.join("\n")
-}
-
-function disassemble_file(file) {
-  let fs = require("fs")
-  let buffer
-  try {
-    buffer = fs.readFileSync(file)
-  } catch (e) {
-    console.log(error2str(["Error: Couldn't open file `" + file + "'"]))
-    process.exit()
-  }
-  let bytes = Array.from(buffer)
-  let header_size = extract_int32(bytes)[0]
-  bytes = bytes.slice(4)
-  console.log("---------- header (" + header_size + " bytes) ----------")
-  console.log(disassemble_header(bytes.splice(0, header_size)))
-  console.log("---------- code (" + bytes.length + " bytes) ----------")
-  console.log(disassemble(bytes))
-}
-
-// -------------------- bytecode evaluator --------------------
-
-// run a case statement beginning at index i in bytes
-function run_case(bytes, i) {
-  const get = f => {
-    let value
-    [value, i] = f(bytes, i)
-    return value
-  }
-
-  const n_cases = get(extract_byte)
-  const arity = get(extract_byte)
-  let patterns = []
-  let done = false
-  for (let j = 0; j < n_cases; ++j) {
-    const pattern = get(extract_pattern(arity))
-    patterns.push(pattern)
-    const action = get(extract_values)
-    const match = pattern_matches(pattern)
-    //console.log("pattern =", pattern2str(pattern), "action =", disassemble(action), "match =", match,
-    //            "stack =", JSON.stringify(stack))
-    if (!done && match !== null) {
-      //console.log("before apttern transfer, symbosl =", JSON.stringify(symbols))
-      pattern_transfer(match)
-      //console.log("after apttern transfer, symbosl =", JSON.stringify(symbols))
-      pop(pattern.length)
-      //console.log("running action =", disassemble(action), "on stack =", JSON.stringify(stack), "symbols =", JSON.stringify(symbols))
-      run(action)
-      //console.log("after action, stack =", JSON.stringify(stack))
-      //console.log("before discarding", Object.keys(match).length, "items, symbols =", JSON.stringify(symbols))
-      discard(Object.keys(match).length)
-      //console.log("after discarding, symbols =", JSON.stringify(symbols))
-      done = true
-    }
-  }
-
-  if (!done)
-    throw ["Pattern match failed. Tried:", patterns.map(pattern2str),
-           "But got:", [stack2str(stack.slice(-arity))]]
-
-  return i
-}
-
-// evaluate bytecode
-function run(bytes) {
-  let i
-  const get = f => {
-    let value
-    [value, i] = f(bytes, i)
-    return value
-  }
-  const go = f => push(get(f))
-  for (i = 0; i < bytes.length; ++i) {
-    let b
-    [b, i] = extract_instr(bytes, i)
-
-    const num = () => parseFloat(pop()[0])
-    const item = () => pop()[0]
-    switch (b) {
-      case op.FAIL: throw [pop()]; break
-      case op.IMMSTR: go(extract_string); break
-      case op.IMMINT: go(extract_int32); break
-      case op.IMMFLOAT: go(extract_double); break
-      case op.CLOSURE: {
-        let header = encode_closure(get(extract_byte_values))
-        let code = get(extract_values)
-        push([op.CASE_FUN, header.concat(to_int32(code.length)).concat(code)]);
-      } break
-      case op.QUOTE: { let code = get(extract_values); push([op.CASE_FUN, code]) } break
-      case op.APP: run(item()[1]); break
-      case op.TRANSFER: { let n = get(extract_byte); transfer(n); } break
-      case op.LOAD: { let n = get(extract_byte); load(n); } break
-      case op.DISCARD: { let n = get(extract_byte); discard(n); } break
-      case op.DUP: dup(); break
-      case op.SWAP: swap(); break
-      case op.CASE: i = run_case(bytes, i); break
-      case op.MAKE: { let n = get(extract_byte); let m = get(extract_byte); make_tagged(n, m) } break
-      case op.MAKE32: { let n = get(extract_int32); let m = get(extract_byte); make_tagged(n, m) } break
-      case op.ADD: push(num() + num()); break
-      case op.MUL: push(num() * num()); break
-      case op.SUB: { let a = num(); let b = num(); push(b - a) } break
-      case op.DIV: { let a = num(); let b = num(); push(b / a) } break
-      case op.CAT: { let a = item(); let b = item(); push(b + a) } break
-      default:
-        if (b in words) {
-          try {
-            run(words[b])
-          } catch (e) {
-            let name = get_word_name(b)
-            throw name === null ? e : ["In `" + name + "':"].concat(e)
-          }
-        } else {
-          throw ["Unknown bytecode instruction " + b]
-        }
-        break
-    }
-  }
-}
-
-function run_header(bytes) {
-  let word = n_intrinsics
-  let i = 0
-  while (i < bytes.length) {
-    let [size, _] = extract_int32(bytes, i - 1)
-    i += 4
-    words[word] = bytes.slice(i, i + size)
-    i += size
-    ++word
-  }
-}
-
-function run_file(file, print_stack=true) {
-  let fs = require("fs")
-  let buffer
-  try {
-    buffer = fs.readFileSync(file)
-  } catch (e) {
-    console.log(error2str(["Error: Couldn't open file `" + file + "'"]))
-    process.exit()
-  }
-  let bytes = Array.from(buffer)
-  let header_size = extract_int32(bytes)[0]
-  bytes = bytes.slice(4)
-  run_header(bytes.splice(0, header_size))
-  run(bytes)
-  if (print_stack)
-    print()
-}
-
-// -------------------- compiler helpers --------------------
-
-// helper: given an of environment, convert an identifier to an id
-const to_var_id = (name, env) => {
-  for (let i = 0; i < env.length; ++i)
-    if (env[env.length - 1 - i] === name)
-      return i
-  throw ["Unbound identifier `" + name + "'"]
-}
-
-// helper: check if variable is in an environment
-const is_bound = (name, env) => {
-  try {
-    let id = to_var_id(name, env)
-    return true
-  } catch (e) {
-    return false
-  }
-}
-
-function compile_datadef(datadef) {
-  bind_tags(datadef.slice(1))
-  return []
-}
-
-// get all bound variables in a pattern
-function extract_env(pattern) {
-  if (!Array.isArray(pattern)) // tag or unescaped variable
-    return (pattern in tags) || (pattern in primitive_tags)
-             ? []
-             : [pattern]
-  let head = pattern[0]
-  if (["int", "num", "str", "wild"].includes(head))
-    return []
-
-  let tail = pattern.slice(1)
-  const merge = (a, b) => {
-    let result = a
-    for (const c of b)
-      if (!(c in result))
-        result.push(c)
-    return result
-  }
-  if (head === "var")
-    return [tail[0]]
-  return tail.map(extract_env).reduce(merge, [])
-}
-
-function extract_free_lambda(e, env=[]) {
-  let result = []
-  for (const c of e.slice(1)) { // for each case
-    let [_, lhs, rhs] = c
-    result = result.concat(extract_free(rhs, env.concat(extract_env(lhs))))
-  }
-  return result
-}
-
-// get all free variables in an expression
-function extract_free(expr, env=[]) {
-  let result = []
-  for (const e of expr.slice(1)) {
-    if (Array.isArray(e)) {
-      let head = e[0]
-      let tail = e.slice(1)
-      switch (head) {
-        //case "where": result = result.concat(extract_free_where(e, env)); break
-        case "lambda": result = result.concat(extract_free_lambda(e, env)); break
-        case "expr": case "quote": result = result.concat(extract_free(e, env)); break
-        case "int": break
-        case "num": break
-        case "str": break
-        case "bytecode": break
-        case "var": case "intvar": case "numvar": case "strvar":
-          if (!is_bound(tail[0], env))
-            result.push(tail[0])
-          break
-        default: throw ["Bad AST node `" + head + "'"]
-      }
-    } else if (!(e in word_map) && !is_bound(e, env)) // if not a word, treat as unescaped variable
-        result.push(e)
-  }
-  return result
 }
 
 // check that the given compiled patterns are exhaustive for the smallest possible types satisfying the patterns
@@ -1611,6 +1388,338 @@ function check_exhaustive(patterns) {
              inferred.filter(a => !a.is_satisfied).map(a => a.toString())]
 }
 
+// -------------------- disassembler --------------------
+
+// opcode -> word name
+function pretty(code) {
+  for (const word in word_map)
+    if (word_map[word] === code)
+      return word
+  return code.toString()
+}
+
+// [Number] -> String
+function disassemble(bytes, indent_by=0) {
+  const indent_width = 2
+
+  let result = []
+  let i
+  const get = f => {
+    let value
+    [value, i] = f(bytes, i)
+    return value
+  }
+  const go = f => put(get(f))
+  const put = s => {
+    if (result.length === 0)
+      result.push("")
+    result[result.length - 1] += s
+  }
+  const brk = () => result.push("")
+
+  for (i = 0; i < bytes.length; ++i) {
+    let b
+    [b, i] = extract_instr(bytes, i)
+
+    let n, values
+    switch (b) {
+      case op.FAIL: put("fail"); brk(); break
+      case op.IMMSTR: put("str "); put(JSON.stringify(get(extract_string))); brk(); break
+      case op.IMMINT: put("int "); go(extract_int32); brk(); break
+      case op.IMMFLOAT: put("float "); go(extract_double); brk(); break
+      case op.CLOSURE: {
+        put("closure ")
+        const n_vars = get(extract_byte)
+        for (let j = 0; j < n_vars; ++j)
+          put(get(extract_byte) + " ")
+        brk()
+        } break
+      case op.QUOTE:
+        put("quote")
+        values = get(extract_values)
+        result = result.concat(disassemble(values, indent_by + indent_width))
+        brk()
+        break
+      case op.APP: put("app"); brk(); break
+      case op.TRANSFER: put("transfer "); go(extract_byte); brk(); break
+      case op.LOAD: put("load "); go(extract_byte); brk(); break
+      case op.DISCARD: put("discard "); go(extract_byte); brk(); break
+      case op.DUP: put("dup"); brk(); break
+      case op.SWAP: put("swap"); brk(); break
+      case op.CASE: {
+        put("case")
+        const n_cases = get(extract_byte)
+        const arity = get(extract_byte)
+        let cases = []
+        for (let j = 0; j < n_cases; ++j) {
+          const pattern = get(extract_pattern(arity))
+          const action = get(extract_values)
+          result = result.concat([" ".repeat(indent_width) + pattern2str(pattern) + " → "])
+                         .concat(disassemble(action, indent_by + indent_width))
+        }
+        brk()
+      } break
+      case op.MAKE: put("make "); go(extract_byte); put(" from "); go(extract_byte); brk(); break
+      case op.MAKE32: put("make "); go(extract_int32); put(" from "); go(extract_byte); brk(); break
+      case op.ADD: put("add"); brk(); break
+      case op.MUL: put("mul"); brk(); break
+      case op.SUB: put("sub"); brk(); break
+      case op.DIV: put("div"); brk(); break
+      case op.CAT: put("cat"); brk(); break
+      default:
+        result.push(pretty(b)); brk(); break
+    }
+  }
+  result = result.filter(s => s.trim() !== "").map(s => " ".repeat(indent_by) + s)
+  return indent_by === 0 ? result.join("\n") : result
+}
+
+function disassemble_header(bytes) {
+  let result = []
+  let word = n_intrinsics
+  let i = 0
+  while (i < bytes.length) {
+    let [size, _] = extract_int32(bytes, i - 1)
+    i += 4
+    result = result.concat(word + ":")
+                   .concat(disassemble(bytes.slice(i, i + size), indent_by=2))
+    i += size
+    ++word
+  }
+  return result.join("\n")
+}
+
+function disassemble_file(file) {
+  let fs = require("fs")
+  let buffer
+  try {
+    buffer = fs.readFileSync(file)
+  } catch (e) {
+    console.log(error2str(["Error: Couldn't open file `" + file + "'"]))
+    process.exit()
+  }
+  let bytes = Array.from(buffer)
+  let header_size = extract_int32(bytes)[0]
+  bytes = bytes.slice(4)
+  console.log("---------- header (" + header_size + " bytes) ----------")
+  console.log(disassemble_header(bytes.splice(0, header_size)))
+  console.log("---------- code (" + bytes.length + " bytes) ----------")
+  console.log(disassemble(bytes))
+}
+
+// -------------------- interpreter --------------------
+
+// run a case statement beginning at index i in bytes
+function run_case(bytes, i) {
+  const get = f => {
+    let value
+    [value, i] = f(bytes, i)
+    return value
+  }
+
+  const n_cases = get(extract_byte)
+  const arity = get(extract_byte)
+  let patterns = []
+  let done = false
+  for (let j = 0; j < n_cases; ++j) {
+    const pattern = get(extract_pattern(arity))
+    patterns.push(pattern)
+    const action = get(extract_values)
+    const match = pattern_matches(pattern)
+    //console.log("pattern =", pattern2str(pattern), "action =", disassemble(action), "match =", match,
+    //            "stack =", JSON.stringify(stack))
+    if (!done && match !== null) {
+      //console.log("before apttern transfer, symbosl =", JSON.stringify(symbols))
+      pattern_transfer(match)
+      //console.log("after apttern transfer, symbosl =", JSON.stringify(symbols))
+      pop(pattern.length)
+      //console.log("running action =", disassemble(action), "on stack =", JSON.stringify(stack), "symbols =", JSON.stringify(symbols))
+      run(action)
+      //console.log("after action, stack =", JSON.stringify(stack))
+      //console.log("before discarding", Object.keys(match).length, "items, symbols =", JSON.stringify(symbols))
+      discard(Object.keys(match).length)
+      //console.log("after discarding, symbols =", JSON.stringify(symbols))
+      done = true
+    }
+  }
+
+  if (!done)
+    throw ["Pattern match failed. Tried:", patterns.map(pattern2str),
+           "But got:", [stack2str(stack.slice(-arity))]]
+
+  return i
+}
+
+// evaluate bytecode
+function run(bytes) {
+  let i
+  const get = f => {
+    let value
+    [value, i] = f(bytes, i)
+    return value
+  }
+  const go = f => push(get(f))
+  for (i = 0; i < bytes.length; ++i) {
+    let b
+    [b, i] = extract_instr(bytes, i)
+
+    const num = () => parseFloat(pop()[0])
+    const item = () => pop()[0]
+    switch (b) {
+      case op.FAIL: throw [pop()]; break
+      case op.IMMSTR: go(extract_string); break
+      case op.IMMINT: go(extract_int32); break
+      case op.IMMFLOAT: go(extract_double); break
+      case op.CLOSURE: {
+        let header = encode_closure(get(extract_byte_values))
+        let code = get(extract_values)
+        push([op.CASE_FUN, header.concat(encode_int32(code.length)).concat(code)]);
+      } break
+      case op.QUOTE: { let code = get(extract_values); push([op.CASE_FUN, code]) } break
+      case op.APP: run(item()[1]); break
+      case op.TRANSFER: { let n = get(extract_byte); transfer(n); } break
+      case op.LOAD: { let n = get(extract_byte); load(n); } break
+      case op.DISCARD: { let n = get(extract_byte); discard(n); } break
+      case op.DUP: dup(); break
+      case op.SWAP: swap(); break
+      case op.CASE: i = run_case(bytes, i); break
+      case op.MAKE: { let n = get(extract_byte); let m = get(extract_byte); make_tagged(n, m) } break
+      case op.MAKE32: { let n = get(extract_int32); let m = get(extract_byte); make_tagged(n, m) } break
+      case op.ADD: push(num() + num()); break
+      case op.MUL: push(num() * num()); break
+      case op.SUB: { let a = num(); let b = num(); push(b - a) } break
+      case op.DIV: { let a = num(); let b = num(); push(b / a) } break
+      case op.CAT: { let a = item(); let b = item(); push(b + a) } break
+      default:
+        if (b in words) {
+          try {
+            run(words[b])
+          } catch (e) {
+            let name = get_word_name(b)
+            throw name === null ? e : ["In `" + name + "':"].concat(e)
+          }
+        } else {
+          throw ["Unknown bytecode instruction " + b]
+        }
+        break
+    }
+  }
+}
+
+function run_header(bytes) {
+  let word = n_intrinsics
+  let i = 0
+  while (i < bytes.length) {
+    let [size, _] = extract_int32(bytes, i - 1)
+    i += 4
+    words[word] = bytes.slice(i, i + size)
+    i += size
+    ++word
+  }
+}
+
+function run_file(file, print_stack=true) {
+  let fs = require("fs")
+  let buffer
+  try {
+    buffer = fs.readFileSync(file)
+  } catch (e) {
+    console.log(error2str(["Error: Couldn't open file `" + file + "'"]))
+    process.exit()
+  }
+  let bytes = Array.from(buffer)
+  let header_size = extract_int32(bytes)[0]
+  bytes = bytes.slice(4)
+  run_header(bytes.splice(0, header_size))
+  run(bytes)
+  if (print_stack)
+    print()
+}
+
+// -------------------- compiler helpers --------------------
+
+// helper: given an of environment, convert an identifier to an id
+const encode_var_id = (name, env) => {
+  for (let i = 0; i < env.length; ++i)
+    if (env[env.length - 1 - i] === name)
+      return i
+  throw ["Unbound identifier `" + name + "'"]
+}
+
+// helper: check if variable is in an environment
+const is_bound = (name, env) => {
+  try {
+    let id = encode_var_id(name, env)
+    return true
+  } catch (e) {
+    return false
+  }
+}
+
+function compile_datadef(datadef) {
+  bind_tags(datadef.slice(1))
+  return []
+}
+
+// get all bound variables in a pattern
+function extract_env(pattern) {
+  if (!Array.isArray(pattern)) // tag or unescaped variable
+    return (pattern in tags) || (pattern in primitive_tags)
+             ? []
+             : [pattern]
+  let head = pattern[0]
+  if (["int", "num", "str", "wild"].includes(head))
+    return []
+
+  let tail = pattern.slice(1)
+  const merge = (a, b) => {
+    let result = a
+    for (const c of b)
+      if (!(c in result))
+        result.push(c)
+    return result
+  }
+  if (head === "var")
+    return [tail[0]]
+  return tail.map(extract_env).reduce(merge, [])
+}
+
+function extract_free_lambda(e, env=[]) {
+  let result = []
+  for (const c of e.slice(1)) { // for each case
+    let [_, lhs, rhs] = c
+    result = result.concat(extract_free(rhs, env.concat(extract_env(lhs))))
+  }
+  return result
+}
+
+// get all free variables in an expression
+function extract_free(expr, env=[]) {
+  let result = []
+  for (const e of expr.slice(1)) {
+    if (Array.isArray(e)) {
+      let head = e[0]
+      let tail = e.slice(1)
+      switch (head) {
+        //case "where": result = result.concat(extract_free_where(e, env)); break
+        case "lambda": result = result.concat(extract_free_lambda(e, env)); break
+        case "expr": case "quote": result = result.concat(extract_free(e, env)); break
+        case "int": break
+        case "num": break
+        case "str": break
+        case "bytecode": break
+        case "var": case "intvar": case "numvar": case "strvar":
+          if (!is_bound(tail[0], env))
+            result.push(tail[0])
+          break
+        default: throw ["Bad AST node `" + head + "'"]
+      }
+    } else if (!(e in word_map) && !is_bound(e, env)) // if not a word, treat as unescaped variable
+        result.push(e)
+  }
+  return result
+}
+
 // check that all currently defined words are exhaustive
 function check_exhaustive_words() {
   for (const word in word_map) {
@@ -1618,8 +1727,8 @@ function check_exhaustive_words() {
       //console.log("word =", word)
       check_exhaustive(extract_patterns(words[word_map[word]]))
     } catch (e) {
-      if (word in partial_accessors) {
-        //console.log("letting", word, "pass by, partial_accessors =", partial_accessors)
+      if (word in partial_words) {
+        //console.log("letting", word, "pass by, partial_words =", partial_words)
         continue
       }
       throw ["In the definition of `" + word + "':", e]
@@ -1667,7 +1776,7 @@ function compile_pattern(pattern, env=[]) {
       }
       
       else if (!(tag in tags)) { // treat as unescaped variable
-        result.push([op.CASE_VAR, to_var_id(tag, env)])
+        result.push([op.CASE_VAR, encode_var_id(tag, env)])
       }
 
       // tag
@@ -1678,7 +1787,7 @@ function compile_pattern(pattern, env=[]) {
                                      + " arguments but is applied to "
                                      + result.length]
 
-        const compiled_id = id < 256 ? [id] : [op.CASE_TAG32].concat(to_int32(id))
+        const compiled_id = id < 256 ? [id] : [op.CASE_TAG32].concat(encode_int32(id))
         const args = arity === 0 ? [] : result.splice(-arity)
 
         result.push(compiled_id.concat([arity]).concat(args))
@@ -1693,11 +1802,11 @@ function compile_pattern(pattern, env=[]) {
         case "wild": result.push([op.CASE_WILD]); break
         case "var": {
           let var_name = tail[0]
-          result.push([op.CASE_VAR, to_var_id(var_name, env)])
+          result.push([op.CASE_VAR, encode_var_id(var_name, env)])
         } break
         case "int": {
           let num = parseInt(tail[0])
-          result.push([op.CASE_INT].concat(to_int32(num)))
+          result.push([op.CASE_INT].concat(encode_int32(num)))
         } break
         case "num": {
           let str = tail[0]
@@ -1733,7 +1842,7 @@ function compile_case(pattern, expr, env=[]) {
   env = env.concat(extract_env(pattern))
   let [compiled_pattern, arity] = compile_pattern(pattern, env)
   let compiled_expr = compile_expr(expr, env)
-  let expr_header = to_int32(compiled_expr.length)
+  let expr_header = encode_int32(compiled_expr.length)
   return [compiled_pattern.concat(expr_header).concat(compiled_expr), arity]
 }
 
@@ -1798,11 +1907,11 @@ function compile_quote(quote, env=[]) {
     //console.log("quoted =", quoted)
     let bytes = compile_expr(quoted, env)
     //console.log("byets =", bytes)
-    return [op.QUOTE].concat(to_int32(bytes.length)).concat(bytes)
+    return [op.QUOTE].concat(encode_int32(bytes.length)).concat(bytes)
   }
 
   // otherwise, construct closure
-  let closure_ids = free.map(a => to_var_id(a, env) + 1) // TODO: nasty +1
+  let closure_ids = free.map(a => encode_var_id(a, env) + 1) // TODO: nasty +1
   //console.log("closure_ids =", closure_ids)
 
   // compile the expr, pretending the closure is the whole environment
@@ -1812,7 +1921,7 @@ function compile_quote(quote, env=[]) {
   //console.log("header =", JSON.stringify(header))
   //console.log("bytes =", JSON.stringify(bytes))
 
-  return header.concat(to_int32(bytes.length)).concat(bytes)
+  return header.concat(encode_int32(bytes.length)).concat(bytes)
 
 }
 
@@ -1833,10 +1942,10 @@ function compile_expr(expr, env=[]) {
       switch (head) {
         case "where": result = result.concat(compile_where(e, env)); break
         case "lambda": result = result.concat(compile_lambda(e, env)); break
-        case "int": result = result.concat([op.IMMINT].concat(to_int32(tail[0]))); break
+        case "int": result = result.concat([op.IMMINT].concat(encode_int32(tail[0]))); break
         case "num": result = result.concat([op.IMMFLOAT].concat(encode_string(tail[0].toString()))); break
         case "str": result = result.concat([op.IMMSTR].concat(encode_string(tail[0]))); break
-        case "var": result = result.concat([op.LOAD, to_var_id(tail[0], env) + 1]); break; // TODO: nasty +1
+        case "var": result = result.concat([op.LOAD, encode_var_id(tail[0], env) + 1]); break; // TODO: nasty +1
         case "quote": result = result.concat(compile_quote(e, env)); break
         case "expr": result = result.concat(compile_expr(e, env)); break
         case "bytecode": result = result.concat(compile_bytecode(e, env)); break
@@ -1847,7 +1956,7 @@ function compile_expr(expr, env=[]) {
         if (!is_bound(e, env))
           throw ["Unbound identifier `" + e + "'"]
         else {
-          result = result.concat([op.LOAD, to_var_id(e, env) + 1]); // TODO: nasty +1
+          result = result.concat([op.LOAD, encode_var_id(e, env) + 1]); // TODO: nasty +1
           continue
         }
       }
@@ -1941,7 +2050,7 @@ function compile(asts, env=[]) {
 }
 
 function compile_words() {
-  const compile_word = w => to_int32(w.length).concat(w)
+  const compile_word = w => encode_int32(w.length).concat(w)
   return words.slice(n_intrinsics).map(compile_word).reduce((a, b) => a.concat(b))
 }
 
@@ -1959,7 +2068,7 @@ function compile_file(src, dest) {
     let bytes = compile(parse(lex(preprocess(s))))
     check_exhaustive_words()
     let compiled_words = compile_words()
-    let header = to_int32(compiled_words.length)
+    let header = encode_int32(compiled_words.length)
     contents = header.concat(compiled_words).concat(bytes)
   } catch (e) {
     console.log(error2str(["Error:", e]))
@@ -1974,102 +2083,6 @@ function compile_file(src, dest) {
 }
 
 // -------------------- interpreter/repl --------------------
-
-// pretty-print a pattern
-function pattern2str(pattern) {
-  if (pattern.length === 0)
-    return "[]"
-
-  // variables match anything
-  if (pattern[0] === "var")
-    return "'" + pattern[1]
-
-  // integers
-  if (pattern[0] === "int")
-    return "[" + pattern[1] + " int]"
-
-  // strings
-  if (pattern[0] === "str")
-    return "[" + pattern[1] + " str]"
-
-  // floats
-  if (pattern[0] === "num")
-    return "[" + pattern[1] + " num]"
-
-  // wilds
-  if (pattern[0] === "wild")
-    return "_"
-
-  // integer variables
-  if (pattern[0] === "intvar")
-    return "['" + pattern[1] + " integer]"
-
-  // string variables
-  if (pattern[0] === "strvar")
-    return "['" + pattern[1] + " string]"
-
-  // float variables
-  if (pattern[0] === "numvar")
-    return "['" + pattern[1] + " number]"
-
-  // function variables
-  if (pattern[0] === "funvar")
-    return "['" + pattern[1] + " function]"
-
-  // functions
-  if (pattern[0] === "fun")
-    return "(" + pattern[1].join(" ") + ")"
-
-  // tags are just numbers > 3
-  if (!isNaN(pattern[0])) {
-    let tag = parseInt(pattern[0])
-    if (tag_bound(tag))
-      tag = get_tag(tag)
-    return "[" + pattern[1].map(a => pattern2str(a) + " ").join("") + tag.toString() + "]"
-  }
-
-  // array of subpatterns
-  return pattern.map(pattern2str).join(" ")
-}
-
-// pretty-print an error
-function error2str(e, as_comment=false, in_full=false) {
-  const error2lines = (e, root) => {
-    if (!Array.isArray(e))
-      return [e]
-    let lines = e.map(a => error2lines(a, false)).reduce((a, b) => a.concat(b), [])
-    if (!root)
-      lines = lines.map(a => "  " + a)
-    if (root && as_comment)
-      lines = lines.map(a => "# " + a)
-    return lines
-  }
-  return error2lines(e, true).join("\n")
-}
-
-function stack2str(items) {
-  const item2str = item => {
-    if (is_str(item))
-      return JSON.stringify(item)
-    if (is_num(item))
-      return item.toString()
-    if (!Array.isArray(item))
-      return JSON.stringify(item)
-    if (item[0] === op.CASE_FUN)
-      return "(" + item[1].join(" ") + ")"
-
-    // might be a tag
-    let [maybe_tag, args] = item
-    if (!tag_bound(maybe_tag))
-      return JSON.stringify(item)
-    let tag = get_tag(maybe_tag)
-    if (args.length === 0)
-      return tag
-    return "[" + args.map(a => item2str(a) + " ").join("") + tag + "]"
-  }
-
-  return items.map(item2str).join(" ")
-}
 
 function print(as_comment=false) {
   const prefix = as_comment ? "# " : ""

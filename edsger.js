@@ -459,13 +459,14 @@ const op = {
   MUL: 17,
   SUB: 18,
   DIV: 19,
+  CMP: 20,
 
-  CAT: 20,     // string manipulation
+  CAT: 21,        // string manipulation
 }
 let n_intrinsics = Object.keys(op).length
 let words = new Array(n_intrinsics).fill([])
 let word_map = {} // { name: bytecode index }
-let partial_words = {} // { name: true }. dict of partial accessor functions
+let partial_words = {} // { name: true }. dict of partial functions
 let primitive_tags = { "integer": op.CASE_INTV
                      , "number": op.CASE_FLOATV
                      , "string": op.CASE_STRV
@@ -651,7 +652,7 @@ function encode_string(s) {
 function encode_tagged_value(a) {
   let [tag, values] = a
   let encoded_values = values.map(encode_value).reduce((a, b) => a.concat(b), [])
-  return encoded_values.concat([op.MAKE, tag, values.length])
+  return encoded_values.concat([op.MAKE, tag, values.length]) // TODO: breaks on tag id > 256
 }
 
 function encode_value(a) {
@@ -1465,6 +1466,7 @@ function disassemble(bytes, indent_by=0) {
       case op.MUL: put("mul"); brk(); break
       case op.SUB: put("sub"); brk(); break
       case op.DIV: put("div"); brk(); break
+      case op.CMP: put("cmp"); brk(); break
       case op.CAT: put("cat"); brk(); break
       default:
         result.push(pretty(b)); brk(); break
@@ -1589,6 +1591,7 @@ function run(bytes) {
       case op.MUL: push(num() * num()); break
       case op.SUB: { let a = num(); let b = num(); push(b - a) } break
       case op.DIV: { let a = num(); let b = num(); push(b / a) } break
+      case op.CMP: { let a = num(); let b = num(); push(a == b ? 0 : a < b ? -1 : 1) } break
       case op.CAT: { let a = item(); let b = item(); push(b + a) } break
       default:
         if (b in words) {

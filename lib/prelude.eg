@@ -100,7 +100,7 @@ a number b number < ≡ a b bytecode 20; cmp->bool where
   -1 cmp->bool ≡ true
   _ cmp->bool ≡ false
 
-a b > ≡ a b < not a b ≡ not and
+a b > ≡ a b < not a b = not and
 
 # conditionals
 

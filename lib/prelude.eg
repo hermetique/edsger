@@ -75,8 +75,8 @@ _ _ or ≡ true
 # equality
 
 a number b number = ≡ a b bytecode 20; cmp->bool where
-  0 num->bool ≡ true
-  _ num->bool ≡ false
+  0 cmp->bool ≡ true
+  _ cmp->bool ≡ false
 
 true true = ≡ false false = ≡ true
 true false = ≡ false true = ≡ false

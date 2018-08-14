@@ -1591,7 +1591,7 @@ function run(bytes) {
       case op.MUL: push(num() * num()); break
       case op.SUB: { let a = num(); let b = num(); push(b - a) } break
       case op.DIV: { let a = num(); let b = num(); push(b / a) } break
-      case op.CMP: { let a = num(); let b = num(); push(a == b ? 0 : a < b ? -1 : 1) } break
+      case op.CMP: { let a = num(); let b = num(); push(b == a ? 0 : b < a ? -1 : 1) } break
       case op.CAT: { let a = item(); let b = item(); push(b + a) } break
       default:
         if (b in words) {

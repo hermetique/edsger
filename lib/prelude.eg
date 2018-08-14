@@ -74,7 +74,7 @@ _ _ or ≡ true
 
 # equality
 
-a number b number = ≡ a b - num->bool where
+a number b number = ≡ a b bytecode 20; cmp->bool where
   0 num->bool ≡ true
   _ num->bool ≡ false
 
@@ -95,6 +95,10 @@ a b cons c d cons = ≡ b d = a c = and
 /= ≡ = not
 
 # ordering
+
+a number b number < ≡ a b bytecode 20; cmp->bool where
+  -1 cmp->bool ≡ true
+  _ cmp->bool ≡ false
 
 # conditionals
 

@@ -1,0 +1,30 @@
+import prelude
+
+data _ _ expr
+
+s parenthesize ≡ "{\\left(" s ++ "\\right)}" ++
+[str old-lvl expr] new-lvl wrap ≡ str old-lvl new-lvl > (parenthesize) when
+
+a number latex ≡ a show 0 expr
+a string latex ≡ a 0 expr
+
+# combinator for binary operators, enforces precedence
+
+a b name lvl binop ≡ [a lvl wrap] name ++ [b lvl wrap] ++ lvl expr
+
+# arithmetic
+
+a b expr c d expr + ≡ a b expr c d expr "+" 60 binop
+a b expr c d expr - ≡ a b expr c d expr "-" 60 binop
+a b expr c d expr * ≡ a b expr c d expr "\\cdot " 50 binop
+a b expr c d expr = ≡ a b expr c d expr "=" 100 binop
+a _ expr c _ expr / ≡ "\\frac{" a ++ "}{" ++ c ++ "}" ++ 0 expr
+
+c _ expr . ≡ λ a _ expr → c a parenthesize ++ 50 expr
+
+a b expr abs ≡ "{\\left|" a ++ "\\right|}" ++ 0 expr
+a b expr norm ≡ "{\\lVert " a ++ "\\rVert}" ++ 0 expr
+
+a _ expr c _ expr ^ ≡ "{" a ++ "}^{" ++ c ++ "}" ++ 0 expr
+a b expr c _ expr int ≡ "\\int " a b expr 50 wrap ++ "~\\mathrm{d}" ++ c ++ 50 expr
+a b expr c _ expr der ≡ "\\frac{\\mathrm{d}}{\\mathrm{d}" c ++ "}" ++ a b expr 50 wrap ++ 50 expr

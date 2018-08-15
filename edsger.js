@@ -428,7 +428,7 @@ const op = {
   FAIL: 1,        // stop execution w/ some error message
   IMMSTR: 2,      // load string
   IMMINT: 3,      // load 32-bit integer
-  IMMFLOAT: 4,    // load double
+  IMMNUM: 4,      // load double
   QUOTE: 5,       // load quoted program
   CLOSURE: 6,     // load closure. format:
                   //   n[byte] <n variable indices to store in closure> quoted_program
@@ -444,13 +444,13 @@ const op = {
   CASE_VAR: 0,    //   cases[byte] arity_per_case[byte] case1 quoted_code case2 quoted_code ..
   CASE_INT: 1,    // where each case is:
   CASE_STR: 2,    //   CASE_VAR[byte] var_id[byte] 
-  CASE_FLOAT: 3,  // | CASE_INT[byte] integer[int32]
+  CASE_NUM: 3,    // | CASE_INT[byte] integer[int32]
   CASE_TAG32: 4,  // | CASE_STR[byte] string (same encoding as IMMSTR)
-  CASE_WILD: 5,   // | CASE_FLOAT[byte] string (same encoding as IMMFLOAT)
+  CASE_WILD: 5,   // | CASE_NUM[byte] string (same encoding as IMMNUM)
   CASE_INTV: 6,   // | CASE_TAG32[byte] tag_id[int32] arity[byte] <arity sub-cases>
   CASE_STRV: 7,   // | CASE_WILD[byte]
-  CASE_FLOATV: 8, // | CASE_INTV[byte] var_id[byte] | CASE_STRV[byte] var_id[byte]
-  CASE_FUN: 9,    // | CASE_FLOATV[byte] var_id[byte]
+  CASE_NUMV: 8,   // | CASE_INTV[byte] var_id[byte] | CASE_STRV[byte] var_id[byte]
+  CASE_FUN: 9,    // | CASE_NUMV[byte] var_id[byte]
   CASE_FUNV: 10,  // | tag_id[byte] arity[byte] <arity sub-cases> (for tags <= 255)
                   // var_id of 0 is a wild
                   // quoted_code is size[int32] <int32 bytes of code>
@@ -473,7 +473,7 @@ let words = new Array(n_intrinsics).fill([])
 let word_map = {} // { name: bytecode index }
 let partial_words = {} // { name: true }. dict of partial functions
 let primitive_tags = { "integer": op.CASE_INTV
-                     , "number": op.CASE_FLOATV
+                     , "number": op.CASE_NUMV
                      , "string": op.CASE_STRV
                      , "function": op.CASE_FUNV
                      }
@@ -501,7 +501,7 @@ function bind_tags(arr) {
     if (tag in word_map)
       throw ["Enum tag `" + tag + "' is already bound"]
   }
-  const already_bound = Object.keys(tags).length + 11 // VAR, INT, STR, FLOAT, TAG32, etc, are reserved
+  const already_bound = Object.keys(tags).length + 11 // VAR, INT, STR, NUM, TAG32, etc, are reserved
   let new_tags = []
   for (let i = 0; i < arr.length; ++i) {
     const entry = arr[i]
@@ -664,7 +664,7 @@ function encode_value(a) {
   if (Number.isInteger(a))
     return [op.IMMINT].concat(encode_int32(a))
   if (is_num(a))
-    return [op.IMMFLOAT].concat(encode_string(a.toString()))
+    return [op.IMMNUM].concat(encode_string(a.toString()))
   if (!Array.isArray(a))
     return [op.IMMSTR].concat(encode_string(a.toString()))
   return encode_tagged_value(a)
@@ -766,7 +766,7 @@ function extract_pattern(arity) {
         const num = get(extract_int32)
         return [["int", num], i]
       }
-      case op.CASE_FLOAT: {
+      case op.CASE_NUM: {
         const num = get(extract_double)
         return [["num", num], i]
       }
@@ -780,7 +780,7 @@ function extract_pattern(arity) {
         const id = get(extract_byte)
         return [["strvar", id], i]
       }
-      case op.CASE_FLOATV: {
+      case op.CASE_NUMV: {
         const id = get(extract_byte)
         return [["numvar", id], i]
       }
@@ -1050,7 +1050,7 @@ function pattern_transfer(matches) {
 
 // check that the given compiled patterns are exhaustive for the smallest possible types satisfying the patterns
 function check_exhaustive(patterns) {
-  const dict_copy = d => { let a = {}; for (const v in d) a[v] = true; return a; }
+  const dict_copy = d => { let a = {}; for (const v in d) a[v] = true; return a }
   const dict_empty = d => Object.keys(d).length === 0
   const dict_equal = (a, b) => {
     for (const c in a)
@@ -1062,15 +1062,15 @@ function check_exhaustive(patterns) {
   const any = a => a.reduce((b, c) => b || c, false)
   const zip = (a, b) => a.map((c, i) => [c, b[i]])
   class Inference {
-    constructor(is_satisfied=false) { this.is_satisfied = is_satisfied; }
-    toString() { return this.is_satisfied ? "" : "?"; }
-    copy() { return new Inference(this.is_satisfied); }
-    satisfied() { let copy = this.copy(); copy.is_satisfied = true; return copy; }
+    constructor(is_satisfied=false) { this.is_satisfied = is_satisfied }
+    toString() { return this.is_satisfied ? "" : "?" }
+    copy() { return new Inference(this.is_satisfied) }
+    satisfied() { let copy = this.copy(); copy.is_satisfied = true; return copy }
   }
   class LitInference extends Inference {
-    constructor(values, is_satisfied=false) { super(is_satisfied); this.values = values; }
-    with_value(v) { let copy = this.copy(); copy.values[v] = true; return copy; }
-    contains(v) { return v in this.values; }
+    constructor(values, is_satisfied=false) { super(is_satisfied); this.values = values }
+    with_value(v) { let copy = this.copy(); copy.values[v] = true; return copy }
+    contains(v) { return v in this.values }
     toString(stringifier) {
       let keys = Object.keys(this.values)
       let qualifier = ""
@@ -1078,37 +1078,37 @@ function check_exhaustive(patterns) {
         qualifier = " ≠ " + Object.keys(this.values).map(stringifier).join(" ")
       return super.toString() + qualifier
     }
-    copy() { return new LitInference(dict_copy(this.values), this.is_satisfied); }
+    copy() { return new LitInference(dict_copy(this.values), this.is_satisfied) }
   }
   class Fun extends LitInference {
-    constructor(values={}, is_satisfied=false) { super(values, is_satisfied); }
+    constructor(values={}, is_satisfied=false) { super(values, is_satisfied) }
     toString() {
       let suffix = "function" + super.toString(a => "(" + a.replace(/,/g, " ") + ")")
       return dict_empty(this.values) ? suffix : "[" + suffix + "]"
     }
-    copy() { return new Fun(dict_copy(this.values), this.is_satisfied); }
+    copy() { return new Fun(dict_copy(this.values), this.is_satisfied) }
     equals(b) { return b instanceof Fun
                     && b.is_satisfied === this.is_satisfied
-                    && dict_equal(b.values, this.values); }
+                    && dict_equal(b.values, this.values) }
   }
   class Int extends LitInference {
-    constructor(values={}, is_satisfied=false) { super(values, is_satisfied); }
-    promoted(v) { return new Num(this.values, this.is_satisfied, false); }
+    constructor(values={}, is_satisfied=false) { super(values, is_satisfied) }
+    promoted(v) { return new Num(this.values, this.is_satisfied, false) }
     toString() {
       let suffix = "integer" + super.toString(a => parseInt(a).toString())
       return dict_empty(this.values) ? suffix : "[" + suffix + "]"
     }
-    copy() { return new Int(dict_copy(this.values), this.is_satisfied); }
+    copy() { return new Int(dict_copy(this.values), this.is_satisfied) }
     equals(b) { return b instanceof Int
                     && b.is_satisfied === this.is_satisfied
-                    && dict_equal(b.values, this.values); }
+                    && dict_equal(b.values, this.values) }
   }
   class Num extends LitInference {
     constructor(values={}, is_satisfied=false, has_integers=false) {
       super(values, is_satisfied)
       this.has_integers = has_integers
     }
-    contains(v) { return super.contains(v) || (this.has_integers && Number.isInteger(parseFloat(v))); }
+    contains(v) { return super.contains(v) || (this.has_integers && Number.isInteger(parseFloat(v))) }
     toString() {
       let suffix = "number" + super.toString(a => parseFloat(a).toString())
       return dict_empty(this.values)
@@ -1119,52 +1119,52 @@ function check_exhaustive(patterns) {
                     ? "[" + suffix + " or any integer]"
                     : "[" + suffix + "]")
     }
-    copy() { return new Num(dict_copy(this.values), this.is_satisfied, this.has_integers); }
-    with_integers() { let copy = this.copy(); copy.has_integers = true; return copy; }
+    copy() { return new Num(dict_copy(this.values), this.is_satisfied, this.has_integers) }
+    with_integers() { let copy = this.copy(); copy.has_integers = true; return copy }
     equals(b) { return b instanceof Num
                     && b.is_satisfied === this.is_satisfied 
                     && b.has_integers === this.has_integers
-                    && dict_equal(b.values, this.values); }
+                    && dict_equal(b.values, this.values) }
   }
   class Str extends LitInference {
-    constructor(values={}, is_satisfied=false) { super(values, is_satisfied); }
-    toString() { return "[string" + super.toString(a => JSON.stringify(a)) + "]"; }
-    copy() { return new Str(dict_copy(this.values), this.is_satisfied); }
+    constructor(values={}, is_satisfied=false) { super(values, is_satisfied) }
+    toString() { return "[string" + super.toString(a => JSON.stringify(a)) + "]" }
+    copy() { return new Str(dict_copy(this.values), this.is_satisfied) }
     equals(b) { return b instanceof Str
                     && b.is_satisfied === this.is_satisfied
-                    && dict_equal(b.values, this.values); }
+                    && dict_equal(b.values, this.values) }
   }
   class Wild extends Inference {
-    constructor(is_satisfied=false) { super(is_satisfied); }
-    toString() { return "_" + super.toString(); }
-    copy() { return new Wild(this.is_satisfied); }
-    equals(b) { return b instanceof Wild && b.is_satisfied === this.is_satisfied; }
+    constructor(is_satisfied=false) { super(is_satisfied) }
+    toString() { return "_" + super.toString() }
+    copy() { return new Wild(this.is_satisfied) }
+    equals(b) { return b instanceof Wild && b.is_satisfied === this.is_satisfied }
   }
   class Row extends Inference {
-    constructor(args, is_satisfied=false) { super(is_satisfied); this.args = args; }
-    toString() { return this.args.map(a => a.toString()).join(" "); }
-    copy() { return new Row(this.args.map(a => a.copy()), this.is_satisfied); }
-    empty() { return this.args.length === 0; }
+    constructor(args, is_satisfied=false) { super(is_satisfied); this.args = args }
+    toString() { return this.args.map(a => a.toString()).join(" ") }
+    copy() { return new Row(this.args.map(a => a.copy()), this.is_satisfied) }
+    empty() { return this.args.length === 0 }
     equals(b) { return b instanceof Row
                     && b.is_satisfied === this.is_satisfied
                     && b.args.length === this.args.length
-                    && all(zip(b.args, this.args).map(p => p[0].equals(p[1]))); }
+                    && all(zip(b.args, this.args).map(p => p[0].equals(p[1]))) }
   }
   class Tag extends Inference {
-    constructor(name, args, is_satisfied=false) { super(is_satisfied); this.name = name; this.args = args; }
+    constructor(name, args, is_satisfied=false) { super(is_satisfied); this.name = name; this.args = args }
     toString() {
       let suffix = this.name + super.toString()
       return this.args.empty() ? suffix : "[" + this.args.toString() + " " + suffix + "]"
     }
-    copy() { return new Tag(this.name, this.args.copy(), this.is_satisfied); }
-    empty() { return this.args.empty(); }
+    copy() { return new Tag(this.name, this.args.copy(), this.is_satisfied) }
+    empty() { return this.args.empty() }
     equals(b) { return b instanceof Tag 
                     && b.is_satisfied === this.is_satisfied
                     && b.name === this.name
-                    && b.args.equals(this.args); }
+                    && b.args.equals(this.args) }
   }
   //class RetryWith extends Inference {
-  //  constructor(pattern) { super(false); this.pattern = pattern; }
+  //  constructor(pattern) { super(false); this.pattern = pattern }
   //}
   //let a = new Int({3: true}).promoted()
   //let b = a.satisfied()
@@ -1432,7 +1432,7 @@ function disassemble(bytes, indent_by=0) {
       case op.FAIL: put("fail"); brk(); break
       case op.IMMSTR: put("str "); put(JSON.stringify(get(extract_string))); brk(); break
       case op.IMMINT: put("int "); go(extract_int32); brk(); break
-      case op.IMMFLOAT: put("float "); go(extract_double); brk(); break
+      case op.IMMNUM: put("float "); go(extract_double); brk(); break
       case op.CLOSURE: {
         put("closure ")
         const n_vars = get(extract_byte)
@@ -1516,45 +1516,51 @@ function disassemble_file(file) {
 
 // -------------------- interpreter --------------------
 
-// run a case statement beginning at index i in bytes
-function run_case(bytes, i) {
+// destructures variables on stack according to the first matching pattern in a case statement
+// return [[bytecode to run, number of symbols bound], new i]
+function partially_run_case(bytes, i) {
   const get = f => {
     let value
     [value, i] = f(bytes, i)
     return value
   }
 
-  const n_cases = get(extract_byte)
-  const arity = get(extract_byte)
+  let n_cases = get(extract_byte)
+  let arity = get(extract_byte)
   let patterns = []
   let done = false
+  let action = null
   for (let j = 0; j < n_cases; ++j) {
-    const pattern = get(extract_pattern(arity))
+    let pattern = get(extract_pattern(arity))
     patterns.push(pattern)
-    const action = get(extract_values)
-    const match = pattern_matches(pattern)
+    let bytes = get(extract_values)
+    let match = pattern_matches(pattern)
     //console.log("pattern =", pattern2str(pattern), "action =", disassemble(action), "match =", match,
     //            "stack =", JSON.stringify(stack))
-    if (!done && match !== null) {
+    if (action === null && match !== null) {
       //console.log("before apttern transfer, symbosl =", JSON.stringify(symbols))
       pattern_transfer(match)
       //console.log("after apttern transfer, symbosl =", JSON.stringify(symbols))
       pop(pattern.length)
       //console.log("running action =", disassemble(action), "on stack =", JSON.stringify(stack), "symbols =", JSON.stringify(symbols))
-      run(action)
+      action = [bytes, Object.keys(match).length]
       //console.log("after action, stack =", JSON.stringify(stack))
-      //console.log("before discarding", Object.keys(match).length, "items, symbols =", JSON.stringify(symbols))
-      discard(Object.keys(match).length)
-      //console.log("after discarding, symbols =", JSON.stringify(symbols))
-      done = true
     }
   }
 
-  if (!done)
-    throw ["Pattern match failed. Tried:", patterns.map(pattern2str),
+  // pattern match failed
+  if (action === null) {
+    let max_patterns = 5
+    let pretty_patterns = patterns.map(pattern2str)
+    if (pretty_patterns.length > max_patterns) {
+      let overflow = pretty_patterns.length - max_patterns
+      pretty_patterns = pretty_patterns.slice(0, max_patterns).concat(["... " + overflow + " more ..."])
+    }
+    throw ["Pattern match failed. Tried:", pretty_patterns,
            "But got:", [stack2str(stack.slice(-arity))]]
+  }
 
-  return i
+  return [action, i]
 }
 
 // evaluate bytecode
@@ -1576,7 +1582,7 @@ function run(bytes) {
       case op.FAIL: throw [pop()]; break
       case op.IMMSTR: go(extract_string); break
       case op.IMMINT: go(extract_int32); break
-      case op.IMMFLOAT: go(extract_double); break
+      case op.IMMNUM: go(extract_double); break
       case op.CLOSURE: {
         let header = encode_closure(get(extract_byte_values))
         let code = get(extract_values)
@@ -1584,12 +1590,12 @@ function run(bytes) {
       } break
       case op.QUOTE: { let code = get(extract_values); push([op.CASE_FUN, code]) } break
       case op.APP: run(item()[1]); break
-      case op.TRANSFER: { let n = get(extract_byte); transfer(n); } break
-      case op.LOAD: { let n = get(extract_byte); load(n); } break
-      case op.DISCARD: { let n = get(extract_byte); discard(n); } break
+      case op.TRANSFER: { let n = get(extract_byte); transfer(n) } break
+      case op.LOAD: { let n = get(extract_byte); load(n) } break
+      case op.DISCARD: { let n = get(extract_byte); discard(n) } break
       case op.DUP: dup(); break
       case op.SWAP: swap(); break
-      case op.CASE: i = run_case(bytes, i); break
+      case op.CASE: { let [code, n] = get(partially_run_case); run(code); discard(n) } break
       case op.MAKE: { let n = get(extract_byte); let m = get(extract_byte); make_tagged(n, m) } break
       case op.MAKE32: { let n = get(extract_int32); let m = get(extract_byte); make_tagged(n, m) } break
       case op.ADD: push(num() + num()); break
@@ -1599,15 +1605,18 @@ function run(bytes) {
       case op.CMP: { let a = num(); let b = num(); push(b == a ? 0 : b < a ? -1 : 1) } break
       case op.CAT: { let a = item(); let b = item(); push(b + a) } break
       default:
-        if (b in words) {
+        if (!(b in words))
+          throw ["Unknown bytecode instruction " + b]
+        if (i === bytes.length - 1) { // tail call opt
+          i = -1
+          bytes = words[b]
+        } else {
           try {
             run(words[b])
           } catch (e) {
             let name = get_word_name(b)
             throw name === null ? e : ["In `" + name + "':"].concat(e)
           }
-        } else {
-          throw ["Unknown bytecode instruction " + b]
         }
         break
     }
@@ -1815,7 +1824,7 @@ function compile_pattern(pattern, env=[]) {
         } break
         case "num": {
           let str = tail[0]
-          result.push([op.CASE_FLOAT].concat(encode_string(str.toString())))
+          result.push([op.CASE_NUM].concat(encode_string(str.toString())))
         } break
         case "str": {
           let str = tail[0]
@@ -1955,7 +1964,7 @@ function compile_expr(expr, env=[], with_code=[]) {
         case "where": result = result.concat(compile_where(e, env)); break
         case "lambda": result = result.concat(compile_lambda(e, env)); break
         case "int": result = result.concat([op.IMMINT].concat(encode_int32(tail[0]))); break
-        case "num": result = result.concat([op.IMMFLOAT].concat(encode_string(tail[0].toString()))); break
+        case "num": result = result.concat([op.IMMNUM].concat(encode_string(tail[0].toString()))); break
         case "str": result = result.concat([op.IMMSTR].concat(encode_string(tail[0]))); break
         case "var": {
           let failed = false

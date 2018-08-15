@@ -238,6 +238,19 @@ a number b number - == bytecode 9 2 9 1 18
 a number b number / == bytecode 9 2 9 1 19
 ```
 
+Code inside a `with` block will apply a given function to numbers, strings,
+and unbound variables (which are converted to strings). For example, the
+[latex](https://github.com/johnli0135/edsger/blob/master/lib/latex.eg) 
+module uses this to define a small DSL that generates LaTeX code:
+```python
+import latex
+
+do with latex
+     x 2 ^ 2 / C + x der x =
+
+# ["\\frac{\\mathrm{d}}{\\mathrm{d}x}{\\left(\\frac{{x}^{2}}{2}+C\\right)}=x" 100 expr]
+```
+
 ## Whitespace
 
 Edsger is whitespace-sensitive. Most of the rules are adapted from my

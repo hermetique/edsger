@@ -238,9 +238,11 @@ a number b number - == bytecode 9 2 9 1 18
 a number b number / == bytecode 9 2 9 1 19
 ```
 
-Code inside a `with` block will apply a given function to numbers, strings,
-and unbound variables (which are converted to strings). For example, the
-[latex](https://github.com/johnli0135/edsger/blob/master/lib/latex.eg) 
+Code inside a `with` block will apply a given function to literals (numbers, integers, and strings)
+and unbound variables (which are converted to string literals). This can be useful for defining
+DSLs, since it lets you add implicit embellishments to literal values.
+
+For example, the [latex](https://github.com/johnli0135/edsger/blob/master/lib/latex.eg) 
 module uses this to define a small DSL that generates LaTeX code:
 ```python
 import latex

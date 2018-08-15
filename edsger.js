@@ -1572,6 +1572,21 @@ function run(bytes) {
     [value, i] = f(bytes, i)
     return value
   }
+  const rec = (new_bytes, word=null) => { // tail call opt
+    if (i === bytes.length - 1) {
+      i = -1
+      bytes = new_bytes
+    } else {
+      try {
+        run(new_bytes)
+      } catch (e) {
+        if (word === null)
+          throw e
+        let name = get_word_name(word)
+        throw name === null ? e : ["In `" + name + "':"].concat(e)
+      }
+    }
+  }
   const go = f => push(get(f))
   for (i = 0; i < bytes.length; ++i) {
     let b
@@ -1590,13 +1605,13 @@ function run(bytes) {
         push([op.CASE_FUN, header.concat(encode_int32(code.length)).concat(code)]);
       } break
       case op.QUOTE: { let code = get(extract_values); push([op.CASE_FUN, code]) } break
-      case op.APP: run(item()[1]); break
+      case op.APP: rec(item()[1]); break
       case op.TRANSFER: { let n = get(extract_byte); transfer(n) } break
       case op.LOAD: { let n = get(extract_byte); load(n) } break
       case op.DISCARD: { let n = get(extract_byte); discard(n) } break
       case op.DUP: dup(); break
       case op.SWAP: swap(); break
-      case op.CASE: { let [code, n] = get(partially_run_case); run(code) } break
+      case op.CASE: { let [code, n] = get(partially_run_case); rec(code) } break
                    // console.log("running ", disassemble(code), "stack =", JSON.stringify(stack));
                    // run(code)
                    // console.log("afterwards, stack =", JSON.stringify(stack)) } break
@@ -1611,17 +1626,7 @@ function run(bytes) {
       default:
         if (!(b in words))
           throw ["Unknown bytecode instruction " + b]
-        if (i === bytes.length - 1) { // tail call opt
-          i = -1
-          bytes = words[b]
-        } else {
-          try {
-            run(words[b])
-          } catch (e) {
-            let name = get_word_name(b)
-            throw name === null ? e : ["In `" + name + "':"].concat(e)
-          }
-        }
+        rec(words[b], b)
         break
     }
   }

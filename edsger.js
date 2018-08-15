@@ -982,6 +982,8 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   if (pattern[0] === "intvar") {
     if (!is_num(item) || !Number.isInteger(parseFloat(item)))
       return null
+    if (pattern[1] === 0)
+      return accu
     accu[pattern[1]] = parseInt(item)
     return accu
   }
@@ -990,6 +992,8 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   if (pattern[0] === "strvar") {
     if (!is_str(item))
       return null
+    if (pattern[1] === 0)
+      return accu
     accu[pattern[1]] = item
     return accu
   }
@@ -998,6 +1002,8 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   if (pattern[0] === "numvar") {
     if (!is_num(item))
       return null
+    if (pattern[1] === 0)
+      return accu
     accu[pattern[1]] = parseFloat(item)
     return accu
   }
@@ -1006,6 +1012,8 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   if (pattern[0] === "funvar") {
     if (!Array.isArray(item) || item[0] !== op.CASE_FUN)
       return null
+    if (pattern[1] === 0)
+      return accu
     accu[pattern[1]] = item
     return accu
   }

@@ -1,7 +1,7 @@
-a function . ≡ bytecode 9 1 7
-a number b number + ≡ bytecode 9 2 9 1 16
-a number b number * ≡ bytecode 9 2 9 1 17
-a number b number - ≡ bytecode 9 2 9 1 18
-a number b number / ≡ bytecode 9 2 9 1 19
-a string b string ++ ≡ bytecode 9 2 9 1 21
-a string fail ≡ bytecode 9 1 1
+a function . ≡ bytecode 9 1 10 1 7
+a number b number + ≡ bytecode 9 2 9 1 10 2 16
+a number b number * ≡ bytecode 9 2 9 1 10 2 17
+a number b number - ≡ bytecode 9 2 9 1 10 2 18
+a number b number / ≡ bytecode 9 2 9 1 10 2 19
+a string b string ++ ≡ bytecode 9 2 9 1 10 2 21
+a string fail ≡ bytecode 9 1 10 1 1

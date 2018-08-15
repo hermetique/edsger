@@ -1535,16 +1535,17 @@ function partially_run_case(bytes, i) {
     patterns.push(pattern)
     let bytes = get(extract_values)
     let match = pattern_matches(pattern)
-    //console.log("pattern =", pattern2str(pattern), "action =", disassemble(action), "match =", match,
-    //            "stack =", JSON.stringify(stack))
+    //console.log()
+    //if (action === null)
+    //  console.log("pattern =", pattern2str(pattern), "bytes =", disassemble(bytes), "match =", match,
+    //              "stack =", JSON.stringify(stack))
     if (action === null && match !== null) {
       //console.log("before apttern transfer, symbosl =", JSON.stringify(symbols))
       pattern_transfer(match)
       //console.log("after apttern transfer, symbosl =", JSON.stringify(symbols))
       pop(pattern.length)
-      //console.log("running action =", disassemble(action), "on stack =", JSON.stringify(stack), "symbols =", JSON.stringify(symbols))
+      //console.log("running action on stack =", JSON.stringify(stack), "symbols =", JSON.stringify(symbols))
       action = [bytes, Object.keys(match).length]
-      //console.log("after action, stack =", JSON.stringify(stack))
     }
   }
 
@@ -1595,7 +1596,10 @@ function run(bytes) {
       case op.DISCARD: { let n = get(extract_byte); discard(n) } break
       case op.DUP: dup(); break
       case op.SWAP: swap(); break
-      case op.CASE: { let [code, n] = get(partially_run_case); run(code); discard(n) } break
+      case op.CASE: { let [code, n] = get(partially_run_case); run(code) } break
+                   // console.log("running ", disassemble(code), "stack =", JSON.stringify(stack));
+                   // run(code)
+                   // console.log("afterwards, stack =", JSON.stringify(stack)) } break
       case op.MAKE: { let n = get(extract_byte); let m = get(extract_byte); make_tagged(n, m) } break
       case op.MAKE32: { let n = get(extract_int32); let m = get(extract_byte); make_tagged(n, m) } break
       case op.ADD: push(num() + num()); break
@@ -1853,9 +1857,11 @@ function compile_pattern(pattern, env=[]) {
 }
 
 function compile_case(pattern, expr, env=[]) {
-  env = env.concat(extract_env(pattern))
+  let extracted_env = extract_env(pattern)
+  env = env.concat(extracted_env)
   let [compiled_pattern, arity] = compile_pattern(pattern, env)
-  let compiled_expr = compile_expr(expr, env)
+  //console.log("here with bound =", extracted_env.length)
+  let compiled_expr = compile_expr(expr, env, undefined, extracted_env.length)
   let expr_header = encode_int32(compiled_expr.length)
   return [compiled_pattern.concat(expr_header).concat(compiled_expr), arity]
 }
@@ -1954,8 +1960,10 @@ function compile_with(expr, env=[]) {
   return tail
 }
 
-function compile_expr(expr, env=[], with_code=[]) {
+function compile_expr(expr, env=[], with_code=[], discarding=0) {
+  //console.log("expr =", expr, "env =", env, "with_code =", with_code, "discarding =", discarding)
   let result = []
+  let last_use_of_discardable = -1;
   for (const e of expr.slice(1)) {
     if (Array.isArray(e)) {
       let head = e[0]
@@ -1969,7 +1977,11 @@ function compile_expr(expr, env=[], with_code=[]) {
         case "var": {
           let failed = false
           try {
-            result = result.concat([op.LOAD, encode_var_id(tail[0], env) + 1]) // TODO: nasty +1
+            let id = encode_var_id(tail[0], env)
+            result = result.concat([op.LOAD, id + 1]) // TODO: nasty +1
+            //console.log("id =", id, e, "discarding =", discarding)
+            if (id < discarding)
+              last_use_of_discardable = result.length
           } catch (e) {
             //throw e
             if (with_code.length === 0)
@@ -1986,6 +1998,11 @@ function compile_expr(expr, env=[], with_code=[]) {
         default: throw ["Bad AST node `" + head + "'"]
       }
       switch (head) {
+        // conservatively assume variables are still needed in nested wheres/lambdas
+        case "where": case "lambda":
+          last_use_of_discardable = result.length
+          break
+        // add code for literals in with blocks
         case "int": case "num": case "str":
           result = result.concat(with_code)
           break
@@ -1993,6 +2010,7 @@ function compile_expr(expr, env=[], with_code=[]) {
     } else {
       if (!(e in word_map)) { // if not a word, treat as unescaped variable
         result = result.concat(compile_expr(["expr", ["var", e]], env, with_code))
+        last_use_of_discardable = result.length
         continue
       }
       let index = word_map[e]
@@ -2010,6 +2028,12 @@ function compile_expr(expr, env=[], with_code=[]) {
         result.push(index)
     }
   }
+
+  //console.log("discarding =", discarding, "last use =", last_use_of_discardable)
+  if (discarding > 0 && last_use_of_discardable !== -1)
+    result.splice(last_use_of_discardable, 0, op.DISCARD, discarding)
+  //console.log()
+  //console.log("expr =", expr, "result =", disassemble(result))
   return result
 }
 

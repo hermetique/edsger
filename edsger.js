@@ -147,7 +147,8 @@ function preprocess(s) {
       else if (token === terminator)
         pop()
       else switch (token) {
-        case "λ": case "\\": case "→": case "->": case "data": case "import": case "do":
+        case "λ": case "\\": case "→": case "->":
+        case "data": case "import": case "do": case "with":
         case "bytecode":
           stack.push([false, col + indent, false])
           break
@@ -367,6 +368,10 @@ const bytecode_block = exact("bytecode")
                          .bind(bytes =>
                            pure(["bytecode"].concat(bytes)))
 
+// with block
+const with_block = exact("with").right(rec_expr.terminated_by(exact(terminator))).bind(expr =>
+                     pure(["with"].concat(expr)))
+
 // lambda block
 const lambda_char = exact("λ").or(exact("\\"))
 const arrow = exact("→").or(exact("->"))
@@ -381,7 +386,7 @@ const quote = exact("(").right(rec_expr.terminated_by(exact(")"))).bind(quoted =
               pure(["quote"].concat(quoted))).label("quote")
 
 // 1 subtree of expression
-const expression = lambda.or(quote).or(bytecode_block).or(term)
+const expression = lambda.or(quote).or(bytecode_block).or(with_block).or(term)
 
 // function definition
 const definition = pattern_terminated_by(exact("==").or(exact("≡"))).some().bind(pats =>
@@ -1706,11 +1711,8 @@ function extract_free(expr, env=[]) {
       switch (head) {
         //case "where": result = result.concat(extract_free_where(e, env)); break
         case "lambda": result = result.concat(extract_free_lambda(e, env)); break
-        case "expr": case "quote": result = result.concat(extract_free(e, env)); break
-        case "int": break
-        case "num": break
-        case "str": break
-        case "bytecode": break
+        case "expr": case "quote": case "with": result = result.concat(extract_free(e, env)); break
+        case "int": case "num": case "str": case "bytecode": break
         case "var": case "intvar": case "numvar": case "strvar":
           if (!is_bound(tail[0], env))
             result.push(tail[0])
@@ -1936,7 +1938,14 @@ function compile_bytecode(e, env) {
   return bytes
 }
 
-function compile_expr(expr, env=[]) {
+function compile_with(expr, env=[]) {
+  let head = compile_expr(["expr", expr[1]], env)
+  let tail = compile_expr(["expr"].concat(expr.slice(2)), env, head)
+  //console.log("head =", head, "slice =", expr.slice(2), "tail =", tail)
+  return tail
+}
+
+function compile_expr(expr, env=[], with_code=[]) {
   let result = []
   for (const e of expr.slice(1)) {
     if (Array.isArray(e)) {
@@ -1948,20 +1957,34 @@ function compile_expr(expr, env=[]) {
         case "int": result = result.concat([op.IMMINT].concat(encode_int32(tail[0]))); break
         case "num": result = result.concat([op.IMMFLOAT].concat(encode_string(tail[0].toString()))); break
         case "str": result = result.concat([op.IMMSTR].concat(encode_string(tail[0]))); break
-        case "var": result = result.concat([op.LOAD, encode_var_id(tail[0], env) + 1]); break; // TODO: nasty +1
+        case "var": {
+          let failed = false
+          try {
+            result = result.concat([op.LOAD, encode_var_id(tail[0], env) + 1]) // TODO: nasty +1
+          } catch (e) {
+            //throw e
+            if (with_code.length === 0)
+              throw e
+            else {
+              result = result.concat(compile_expr(["expr", ["str", tail[0]]], env, with_code))
+            }
+          }
+        } break
         case "quote": result = result.concat(compile_quote(e, env)); break
         case "expr": result = result.concat(compile_expr(e, env)); break
         case "bytecode": result = result.concat(compile_bytecode(e, env)); break
+        case "with": result = result.concat(compile_with(e, env)); break
         default: throw ["Bad AST node `" + head + "'"]
+      }
+      switch (head) {
+        case "int": case "num": case "str":
+          result = result.concat(with_code)
+          break
       }
     } else {
       if (!(e in word_map)) { // if not a word, treat as unescaped variable
-        if (!is_bound(e, env))
-          throw ["Unbound identifier `" + e + "'"]
-        else {
-          result = result.concat([op.LOAD, encode_var_id(e, env) + 1]); // TODO: nasty +1
-          continue
-        }
+        result = result.concat(compile_expr(["expr", ["var", e]], env, with_code))
+        continue
       }
       let index = word_map[e]
       let index_width = Math.floor(Math.log2(index + 1) / 8)
@@ -2040,6 +2063,7 @@ function compile_ast_node(ast, env=[]) {
     case "import": return compile_import(ast, env)
     case "expr": return compile_expr(ast, env)
     case "int": case "num": case "str": case "lambda": case "quote":
+    case "with":
     case "bytecode":
       return compile_expr(["expr", ast], env)
   }

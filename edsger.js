@@ -1573,6 +1573,9 @@ function run(bytes) {
     return value
   }
   const rec = (new_bytes, word=null) => { // tail call opt
+    //console.log("stack =", stack2str(stack))
+    //console.log("symbols =", symbols)
+    //console.log("new bytes =", disassemble(new_bytes))
     if (i === bytes.length - 1) {
       i = -1
       bytes = new_bytes
@@ -1968,7 +1971,7 @@ function compile_with(expr, env=[]) {
 function compile_expr(expr, env=[], with_code=[], discarding=0) {
   //console.log("expr =", expr, "env =", env, "with_code =", with_code, "discarding =", discarding)
   let result = []
-  let last_use_of_discardable = -1;
+  let last_use_of_discardable = 0;
   for (const e of expr.slice(1)) {
     if (Array.isArray(e)) {
       let head = e[0]
@@ -2003,8 +2006,8 @@ function compile_expr(expr, env=[], with_code=[], discarding=0) {
         default: throw ["Bad AST node `" + head + "'"]
       }
       switch (head) {
-        // conservatively assume variables are still needed in nested wheres/lambdas
-        case "where": case "lambda":
+        // conservatively assume variables are still needed in nested wheres/lambdas/bytecode
+        case "where": case "lambda": case "bytecode":
           last_use_of_discardable = result.length
           break
         // add code for literals in with blocks
@@ -2035,7 +2038,7 @@ function compile_expr(expr, env=[], with_code=[], discarding=0) {
   }
 
   //console.log("discarding =", discarding, "last use =", last_use_of_discardable)
-  if (discarding > 0 && last_use_of_discardable !== -1)
+  if (discarding > 0)
     result.splice(last_use_of_discardable, 0, op.DISCARD, discarding)
   //console.log()
   //console.log("expr =", expr, "result =", disassemble(result))

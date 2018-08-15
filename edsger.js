@@ -1447,7 +1447,10 @@ function disassemble(bytes, indent_by=0) {
         for (let j = 0; j < n_vars; ++j)
           put(get(extract_byte) + " ")
         brk()
-        } break
+        const bytes = get(extract_values)
+        result = result.concat(disassemble(bytes, indent_width))
+        brk()
+      } break
       case op.QUOTE:
         put("quote")
         values = get(extract_values)
@@ -1929,6 +1932,7 @@ function compile_lambda(lambda, env=[], exhaustive_check=true) {
 function compile_quote(quote, env=[]) {
   let quoted = ["expr"].concat(quote.slice(1))
   let free = extract_free(quoted)
+  //console.log("quote =", JSON.stringify(quote))
   //console.log("quoted =", JSON.stringify(quoted))
   //console.log("free =", JSON.stringify(free))
   //console.log("env =", JSON.stringify(env))
@@ -1951,14 +1955,16 @@ function compile_quote(quote, env=[]) {
   //console.log("closure_ids =", closure_ids)
 
   // compile the expr, pretending the closure is the whole environment
-  let bytes = compile_expr(quoted, free)
+  let bytes = compile_expr(quoted, free, undefined, free.length)
 
   let header = [op.CLOSURE, closure_ids.length].concat(closure_ids)
   //console.log("header =", JSON.stringify(header))
   //console.log("bytes =", JSON.stringify(bytes))
 
-  return header.concat(encode_int32(bytes.length)).concat(bytes)
+  let result = header.concat(encode_int32(bytes.length)).concat(bytes)
+  //console.log("result =", JSON.stringify(result))
 
+  return result
 }
 
 function compile_bytecode(e, env) {
@@ -2014,8 +2020,8 @@ function compile_expr(expr, env=[], with_code=[], discarding=0) {
         default: throw ["Bad AST node `" + head + "'"]
       }
       switch (head) {
-        // conservatively assume variables are still needed in nested wheres/lambdas/bytecode
-        case "where": case "lambda": case "bytecode":
+        // conservatively assume variables are still needed in more complex expressions
+        case "where": case "lambda": case "bytecode": case "quote":
           last_use_of_discardable = result.length
           break
         // add code for literals in with blocks

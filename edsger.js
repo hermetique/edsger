@@ -2237,11 +2237,19 @@ function repl() {
   process.stdin.resume()
   process.stdin.setEncoding("utf8")
   let util = require("util")
+  let strings = []
   process.stdin.on("data", s => {
-    if (s.trim().length === 0)
+    s = s.replace(/\s*$/, "")
+    if (s.length === 0)
       return
+    if (s[s.length - 1] === "#") {
+      strings.push(s.substring(0, s.length - 1))
+      return
+    }
     try {
-      interpret(s, repl_mode=true)
+      let code = strings.map(a => a + "\n").join("") + s
+      strings = []
+      interpret(code, repl_mode=true)
       print(as_comment=true)
       console.log()
     } catch (e) {

@@ -1,14 +1,8 @@
-import base
-
-# combinator for linear recursion on natural numbers
-# base is f(0)
-# ind sends f(n - 1), n to f(n)
-0 base ind function natrec ≡ base
-n base ind function natrec ≡ [n 1 -] base ind natrec n ind .
+import prelude
 
 # factorial and triangular numbers
-fac ≡ 1 (*) natrec
-tri ≡ 0 (+) natrec
+fac ≡ 1 (*) nat-rec
+tri ≡ 0 (+) nat-rec
 
 # fibonacci numbers
 n fib ≡ 1 1 n fib' instead where

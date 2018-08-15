@@ -135,3 +135,8 @@ a itself b itself ++ ≡ a b ++ itself
 
 nil a ++ ≡ a nil ++ ≡ a
 a b c cons ++ ≡ a b ++ c cons
+
+# traversable
+
+nil reverse ≡ nil
+a b cons reverse ≡ nil b cons a reverse ++

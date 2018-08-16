@@ -253,6 +253,12 @@ do with latex
 # ["\\frac{\\mathrm{d}}{\\mathrm{d}x}{\\left(\\frac{{x}^{2}}{2}+C\\right)}=x" 100 expr]
 ```
 
+`with` can also be useful for defining lists of literals:
+```python
+nil with cons 1 2 3 4 5 6 7
+# [[[[[nil 1 cons] 2 cons] 3 cons] 4 cons] 5 cons]
+```
+
 ## Whitespace
 
 Edsger is whitespace-sensitive. Most of the rules are adapted from my

@@ -140,7 +140,7 @@ a itself b itself <> ≡ a b <> itself
 a left _ <> ≡ _ a left <> ≡ a left
 a right b right <> ≡ a b <> right
 
-a b pair c d pair <> ≡ (a c <>) (b d <>) pair
+(a b pair) (c d pair) <> ≡ (a c <>) (b d <>) pair
 
 nil a <> ≡ a nil <> ≡ a
 a (b c cons) <> ≡ (a b <>) c cons 
@@ -158,7 +158,7 @@ a function b function ++ ≡ a b <>
 true true ++ ≡ true false ++ ≡ false true ++ ≡ true
 false false ++ ≡ false
 
-a b pair c d pair ++ ≡ a b pair c d pair <>
+(a b pair) (c d pair) ++ ≡ (a b pair) (c d pair) <>
 
 nil a ++ ≡ a nil ++ ≡ a
 a (b c cons) ++ ≡ a (b c cons) <>
@@ -182,6 +182,6 @@ a b cons reverse ≡ (nil b cons) a reverse ++
 
 nil _ intersperse ≡ nil
 nil a cons _ intersperse ≡ nil a cons
-a b cons c intersperse ≡ a c intersperse c cons b cons
+(a b cons) c intersperse ≡ (a c intersperse) c cons b cons
 
 intercalate ≡ intersperse concat

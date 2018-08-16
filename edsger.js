@@ -338,12 +338,12 @@ const term = one.guard(s => s !== terminator && s !== "where").bind(s => {
   else if (s[0] === "'")
     return pure(["var", s.substring(1)])
   else if (s[0] === "\"")
-    return pure(["str", unescaped(s)])
+    return pure(["string", unescaped(s)])
   else if (!isNaN(s)) {
     let a = parseFloat(s)
     if (Number.isInteger(a) && !/\./.test(s))
-      return pure(["int", parseInt(s)])
-    return pure(["num", a])
+      return pure(["integer", parseInt(s)])
+    return pure(["number", a])
   }
   return pure(s)
 }).label("term")
@@ -465,13 +465,13 @@ const op = {
   CASE_NUM: 3,    // | CASE_INT[byte] integer[int32]
   CASE_TAG32: 4,  // | CASE_STR[byte] string (same encoding as IMMSTR)
   CASE_WILD: 5,   // | CASE_NUM[byte] string (same encoding as IMMNUM)
-  CASE_INTV: 6,   // | CASE_TAG32[byte] tag_id[int32] arity[byte] <arity sub-cases>
-  CASE_STRV: 7,   // | CASE_WILD[byte]
-  CASE_NUMV: 8,   // | CASE_INTV[byte] var_id[byte] | CASE_STRV[byte] var_id[byte]
-  CASE_FUN: 9,    // | CASE_NUMV[byte] var_id[byte]
-  CASE_FUNV: 10,  // | tag_id[byte] arity[byte] <arity sub-cases> (for tags <= 255)
+  CASE_TYPED: 6,  // | CASE_TAG32[byte] tag_id[int32] arity[byte] <arity sub-cases>
+  CASE_TYPED32:7, // | CASE_WILD[byte]
+                  // | CASE_TYPED[byte] type_tag[byte] var_id[byte]
+                  // | CASE_TYPED32[byte] type_tag[int32] var_id[byte]
+                  // | tag_id[byte] arity[byte] <arity sub-cases> (for tags <= 255)
                   // var_id of 0 is a wild
-                  // quoted_code is size[int32] <int32 bytes of code>
+                  // quoted_code is size[int32] <size bytes of code>
 
   MAKE: 14,       // make a tagged object. format is:
                   //   tag_id[byte] arity[byte]
@@ -494,11 +494,12 @@ let n_intrinsics = Object.keys(op).length
 let words = new Array(n_intrinsics).fill([])
 let word_map = {} // { name: bytecode index }
 let partial_words = {} // { name: true }. dict of partial functions
-let typenames = { "integer": op.CASE_INTV
-                , "number": op.CASE_NUMV
-                , "string": op.CASE_STRV
-                , "function": op.CASE_FUNV
+let typenames = { "integer": 0
+                , "number": 1
+                , "string": 2
+                , "function": 3
                 }
+
 
 // vm state: stack + symbol stack + tags
 let stack = []
@@ -523,7 +524,7 @@ function bind_tags(arr) {
     if (tag in word_map)
       throw ["Enum tag `" + tag + "' is already bound"]
   }
-  const already_bound = Object.keys(tags).length + 11 // VAR, INT, STR, NUM, TAG32, etc, are reserved
+  const already_bound = Object.keys(tags).length + 8 // VAR, INT, STR, NUM, TAG32, etc, are reserved
   let new_tags = []
   for (let i = 0; i < arr.length; ++i) {
     const entry = arr[i]
@@ -636,6 +637,12 @@ function tag_bound(id) {
 function get_tag(id) {
   for (const t in tags)
     if (id === tags[t].id)
+      return t
+  return null
+}
+function get_typename(id) {
+  for (const t in typenames)
+    if (id === typenames[t])
       return t
   return null
 }
@@ -775,51 +782,41 @@ function extract_pattern(arity) {
       [val, i] = f(bytes, i)
       return val
     }
-    const head = get(extract_byte)
+    let head = get(extract_byte)
     switch (head) {
       case op.CASE_VAR: {
-        const id = get(extract_byte) + 1
+        let id = get(extract_byte) + 1
         return [["var", id], i]
       }
       case op.CASE_STR: {
-        const str = get(extract_string)
-        return [["str", str], i]
+        let str = get(extract_string)
+        return [["string", str], i]
       }
       case op.CASE_INT: {
-        const num = get(extract_int32)
-        return [["int", num], i]
+        let num = get(extract_int32)
+        return [["integer", num], i]
       }
       case op.CASE_NUM: {
-        const num = get(extract_double)
-        return [["num", num], i]
+        let num = get(extract_double)
+        return [["number", num], i]
       }
       case op.CASE_WILD:
         return [["wild"], i]
-      case op.CASE_INTV: {
-        const id = get(extract_byte)
-        return [["intvar", id], i]
+      case op.CASE_TYPED: {
+        let type = get(extract_byte)
+        let id = get(extract_byte)
+        return [["typed", type, id], i]
       }
-      case op.CASE_STRV: {
-        const id = get(extract_byte)
-        return [["strvar", id], i]
-      }
-      case op.CASE_NUMV: {
-        const id = get(extract_byte)
-        return [["numvar", id], i]
-      }
+      // TODO: TYPED32, TAG32
       case op.CASE_FUN: {
         get(extract_byte); // discard quote opcode
-        const values = get(extract_values)
+        let values = get(extract_values)
         return [["fun", values], i]
       }
-      case op.CASE_FUNV: {
-        const id = get(extract_byte)
-        return [["funvar", id], i]
-      }
       default: {
-        const tag = head === op.CASE_TAG32 ? get(extract_int32) : head
-        const arity = get(extract_byte)
-        const pat = get(extract_pattern(arity))
+        let tag = head === op.CASE_TAG32 ? get(extract_int32) : head
+        let arity = get(extract_byte)
+        let pat = get(extract_pattern(arity))
         return [[tag, pat], i]
       }
     }
@@ -870,36 +867,24 @@ function pattern2str(pattern) {
     return var2str(pattern[1])
 
   // integers
-  if (pattern[0] === "int")
+  if (pattern[0] === "integer")
     return "(" + pattern[1] + " integer)"
 
   // strings
-  if (pattern[0] === "str")
+  if (pattern[0] === "string")
     return "(" + JSON.stringify(pattern[1]) + " string)"
 
   // floats
-  if (pattern[0] === "num")
+  if (pattern[0] === "number")
     return "(" + pattern[1] + " number)"
 
   // wilds
   if (pattern[0] === "wild")
     return "_"
 
-  // integer variables
-  if (pattern[0] === "intvar")
-    return "(" + var2str(pattern[1]) + " integer)"
-
-  // string variables
-  if (pattern[0] === "strvar")
-    return "(" + var2str(pattern[1]) + " string)"
-
-  // float variables
-  if (pattern[0] === "numvar")
-    return "(" + var2str(pattern[1]) + " number)"
-
-  // function variables
-  if (pattern[0] === "funvar")
-    return "(" + var2str(pattern[1]) + " function)"
+  // typed variables
+  if (pattern[0] === "typed")
+    return "(" + var2str(pattern[2]) + " " + get_typename(pattern[1]) + ")"
 
   // functions
   if (pattern[0] === "fun")
@@ -975,7 +960,7 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   }
 
   // integers
-  if (pattern[0] === "int") {
+  if (pattern[0] === "integer") {
     let num = parseInt(pattern[1])
     if (!is_num(item) || !Number.isInteger(parseFloat(item)) || num !== parseInt(item))
       return null
@@ -983,7 +968,7 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   }
 
   // strings
-  if (pattern[0] === "str") {
+  if (pattern[0] === "string") {
     let str = pattern[1]
     if (item !== str)
       return null
@@ -991,7 +976,7 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   }
 
   // floats
-  if (pattern[0] === "num") {
+  if (pattern[0] === "number") {
     let num = parseFloat(pattern[1])
     const epsilon = 1e-6
     if (!is_num(item) || Math.abs(num - parseFloat(item)) > epsilon)
@@ -1003,44 +988,46 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   if (pattern[0] === "wild")
     return accu
 
-  // integer variables
-  if (pattern[0] === "intvar") {
-    if (!is_num(item) || !Number.isInteger(parseFloat(item)))
-      return null
-    if (pattern[1] === 0)
-      return accu
-    accu[pattern[1]] = parseInt(item)
-    return accu
-  }
-
-  // string variables
-  if (pattern[0] === "strvar") {
-    if (!is_str(item))
-      return null
-    if (pattern[1] === 0)
-      return accu
-    accu[pattern[1]] = item
-    return accu
-  }
-
-  // float variables
-  if (pattern[0] === "numvar") {
-    if (!is_num(item))
-      return null
-    if (pattern[1] === 0)
-      return accu
-    accu[pattern[1]] = parseFloat(item)
-    return accu
-  }
-
-  // float variables
-  if (pattern[0] === "funvar") {
-    if (!Array.isArray(item) || item[0] !== op.CASE_FUN)
-      return null
-    if (pattern[1] === 0)
-      return accu
-    accu[pattern[1]] = item
-    return accu
+  // typed variables
+  if (pattern[0] === "typed") {
+    let [_, type, id] = pattern
+    switch (type) {
+      case typenames["integer"]: {
+        if (!is_num(item) || !Number.isInteger(parseFloat(item)))
+          return null
+        if (id === 0)
+          return accu
+        accu[id] = parseInt(item)
+        return accu
+      }
+      case typenames["string"]: {
+        if (!is_str(item))
+          return null
+        if (id === 0)
+          return accu
+        accu[id] = item
+        return accu
+      }
+      case typenames["number"]: {
+        if (!is_num(item))
+          return null
+        if (id === 0)
+          return accu
+        accu[id] = parseFloat(item)
+        return accu
+      }
+      case typenames["function"]: {
+        if (!Array.isArray(item) || item[0] !== op.CASE_FUN)
+          return null
+        if (id === 0)
+          return accu
+        accu[id] = item
+        return accu
+      }
+      default: {
+        //TODO: general types
+      }
+    }
   }
 
   // functions
@@ -1203,6 +1190,9 @@ function check_exhaustive(patterns) {
   //let b = a.satisfied()
   //console.log(a.toString(), b.toString())
 
+  // check primitive typed vars
+  const is = (pattern, type) => pattern[0] === "typed" && get_typename(pattern[1]) === type
+
   // either combine a type with a case to make an updated type or
   //   return null if not possible
   //   return undefined if not possible and one of the wildcards needs to be instantiated to something else
@@ -1242,21 +1232,21 @@ function check_exhaustive(patterns) {
       return pair.satisfied()
 
     // integers can be promoted to numbers
-    if (pattern[0] === "num" && pair instanceof Int)
+    if (pattern[0] === "number" && pair instanceof Int)
       return pair.promoted().with_value(pattern[1])
-    if (pattern[0] === "numvar" && pair instanceof Int)
+    if (is(pattern, "number") && pair instanceof Int)
       return pair.promoted().with_integers().satisfied()
-    if (pattern[0] === "numvar" && pair instanceof Num)
+    if (is(pattern, "number") && pair instanceof Num)
       return pair.with_integers().satisfied()
 
     // integers can unify with numbers
-    if (pattern[0] === "int" && pair instanceof Num)
+    if (pattern[0] === "integer" && pair instanceof Num)
       return pair.with_value(pattern[1])
-    if (pattern[0] === "intvar" && pair instanceof Num)
+    if (is(pattern, "integer") && pair instanceof Num)
       return pair.with_integers()
 
     // general case for types with (pretty much) infinite number of values
-    const lits = [["int", Int], ["str", Str], ["num", Num], ["fun", Fun]]
+    const lits = [["integer", Int], ["string", Str], ["number", Num], ["function", Fun]]
     for (const [pat, tag] of lits) {
       // pattern literal
       if (pattern[0] === pat)
@@ -1267,7 +1257,7 @@ function check_exhaustive(patterns) {
                    : pair.with_value(pattern[1]); // add the value to the set
 
       // typed pattern variable
-      else if (pattern[0] === pat + "var")
+      else if (is(pattern, pat))
         return pair instanceof Wild && !pair.is_satisfied
                  ? new tag().satisfied() // instantiate + satisfy wildcards
                  : !(pair instanceof tag)
@@ -1299,6 +1289,7 @@ function check_exhaustive(patterns) {
 
   // return a list of possible types given a pattern
   const infer_from = pattern => {
+    console.log("pattern =", pattern2str(pattern), JSON.stringify(pattern))
     // from empty sequence, infer empty sequence
     if (Array.isArray(pattern) && pattern.length === 0)
       return [new Row([])]
@@ -1319,9 +1310,9 @@ function check_exhaustive(patterns) {
 
     // from literals, infer corresponding type
     // and from variables, infer corresponding satisfied type
-    const lits = { "intvar": Int, "strvar": Str, "numvar": Num, "funvar": Fun }
-    if (pattern[0] + "var" in lits)
-      return [new lits[pattern[0] + "var"]()]
+    const lits = { "integer": Int, "string": Str, "number": Num, "function": Fun }
+    if (any(Object.keys(lits).map(a => is(pattern, a))))
+      return [new lits[get_typename(pattern[1])]()]
     else if (pattern[0] in lits)
       return [new lits[pattern[0]]()]
 
@@ -1741,7 +1732,7 @@ function extract_env(pattern) {
              ? []
              : [pattern]
   let head = pattern[0]
-  if (["int", "num", "str", "wild"].includes(head))
+  if (["integer", "number", "string", "wild"].includes(head))
     return []
 
   let tail = pattern.slice(1)
@@ -1777,10 +1768,10 @@ function extract_free(expr, env=[]) {
         //case "where": result = result.concat(extract_free_where(e, env)); break
         case "lambda": result = result.concat(extract_free_lambda(e, env)); break
         case "expr": case "quote": case "with": result = result.concat(extract_free(e, env)); break
-        case "int": case "num": case "str": case "bytecode": break
-        case "var": case "intvar": case "numvar": case "strvar":
-          if (!is_bound(tail[0], env))
-            result.push(tail[0])
+        case "integer": case "number": case "string": case "bytecode": break
+        case "var": case "typed":
+          if (!is_bound(tail[1], env))
+            result.push(tail[1])
           break
         default: throw ["Bad AST node `" + head + "'"]
       }
@@ -1838,10 +1829,11 @@ function compile_pattern(pattern, env=[]) {
         if (!Array.isArray(arg) || (arg[0] !== op.CASE_VAR && arg[0] !== op.CASE_WILD))
           throw ["Bad pattern: typename `" + tag + "' expects a variable but got " + arg] // TODO: pretty-print arg
 
-        if (arg[0] === op.CASE_WILD)
-          result.push([typenames[tag], 0])
-        else
-          result.push([typenames[tag], arg[1] + 1])
+        let addition = typenames[tag] < 256
+                         ? [op.CASE_TYPED, typenames[tag]]
+                         : [op.CASE_TYPED32].concat(encode_int32(typenames[tag]))
+        addition.push(arg[0] === op.CASE_WILD ? 0 : arg[1] + 1)
+        result.push(addition)
         //console.log("result =", result);
       }
       
@@ -1874,15 +1866,15 @@ function compile_pattern(pattern, env=[]) {
           let var_name = tail[0]
           result.push([op.CASE_VAR, encode_var_id(var_name, env)])
         } break
-        case "int": {
+        case "integer": {
           let num = parseInt(tail[0])
           result.push([op.CASE_INT].concat(encode_int32(num)))
         } break
-        case "num": {
+        case "number": {
           let str = tail[0]
           result.push([op.CASE_NUM].concat(encode_string(str.toString())))
         } break
-        case "str": {
+        case "string": {
           let str = tail[0]
           result.push([op.CASE_STR].concat(encode_string(str)))
         } break
@@ -2026,9 +2018,9 @@ function compile_expr(expr, env=[], with_code=[], discarding=0) {
       switch (head) {
         case "where": result = result.concat(compile_where(e, env)); break
         case "lambda": result = result.concat(compile_lambda(e, env)); break
-        case "int": result = result.concat([op.IMMINT].concat(encode_int32(tail[0]))); break
-        case "num": result = result.concat([op.IMMNUM].concat(encode_string(tail[0].toString()))); break
-        case "str": result = result.concat([op.IMMSTR].concat(encode_string(tail[0]))); break
+        case "integer": result = result.concat([op.IMMINT].concat(encode_int32(tail[0]))); break
+        case "number": result = result.concat([op.IMMNUM].concat(encode_string(tail[0].toString()))); break
+        case "string": result = result.concat([op.IMMSTR].concat(encode_string(tail[0]))); break
         case "var": {
           let failed = false
           try {
@@ -2044,7 +2036,7 @@ function compile_expr(expr, env=[], with_code=[], discarding=0) {
             if (with_code.length === 0)
               throw e
             else {
-              result = result.concat(compile_expr(["expr", ["str", tail[0]]], env, with_code))
+              result = result.concat(compile_expr(["expr", ["string", tail[0]]], env, with_code))
             }
           }
         } break
@@ -2060,7 +2052,7 @@ function compile_expr(expr, env=[], with_code=[], discarding=0) {
           last_use_of_discardable = result.length
           break
         // add code for literals in with blocks
-        case "int": case "num": case "str":
+        case "integer": case "number": case "string":
           result = result.concat(with_code)
           break
       }
@@ -2156,7 +2148,7 @@ function compile_ast_node(ast, env=[]) {
     case "def": return compile_def(ast, false, env)
     case "import": return compile_import(ast, env)
     case "expr": return compile_expr(ast, env)
-    case "int": case "num": case "str": case "lambda": case "quote":
+    case "integer": case "number": case "string": case "lambda": case "quote":
     case "with":
     case "bytecode":
       return compile_expr(["expr", ast], env)

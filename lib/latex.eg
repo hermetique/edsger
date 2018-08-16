@@ -1,12 +1,12 @@
 import prelude
 
-data show _ expr
+data _ _ expr
 
 s parenthesize ≡ "{\\left(" s ++ "\\right)}" ++
-(str old-lvl expr) new-lvl wrap ≡ str old-lvl new-lvl > [parenthesize] when
+(val old-lvl expr) new-lvl wrap ≡ (val show) old-lvl new-lvl > [parenthesize] when
 
-a number latex ≡ a show 0 expr
-a string latex ≡ a 0 expr
+a number latex ≡ a string latex ≡ a 0 expr
+a _ expr show ≡ a show
 
 # combinator for binary operators, enforces precedence
 
@@ -34,6 +34,6 @@ a _ expr c _ expr ^ ≡ "{" a ++ "}^{" ++ c ++ "}" ++ 0 expr
 a b expr c _ expr int ≡ "\\int " a b expr 50 wrap ++ "~\\mathrm{d}" ++ c ++ 50 expr
 a b expr c _ expr der ≡ "\\frac{\\mathrm{d}}{\\mathrm{d}" c ++ "}" ++ a b expr 50 wrap ++ 50 expr
 
-l n cases ≡ nil l cons n 1 - cases' 90 expr where
+l (n _ expr) cases ≡ (nil l cons) (n 1 -) cases' 90 expr where
   l 0 cases' ≡ "\\begin{cases}" l [show] map "\\\\" intercalate ++ "\\end{cases}" ++
   l n cases' ≡ λ case → l case lcons n 1 - cases'

@@ -1302,6 +1302,18 @@ function check_exhaustive(patterns) {
                    : pair.satisfied(); // variables can satisfy infinite no. of values
     }
 
+    // arbitrary typed pattern variable:
+    // satisfies if inferred type is contained in type, otherwise fails
+    if (pattern[0] === "typed") {
+      if (!(pair instanceof Tag))
+        return null
+      let type = pattern[1]
+      let family = families[type]
+      if (family.indexOf(pair.name) === -1)
+        return null
+      return pair.satisfied()
+    }
+
     // arbitrary tags: if wildcard, return undefined to signal that type needs to be reinferred
     if (pair instanceof Wild)
       return undefined
@@ -1352,6 +1364,15 @@ function check_exhaustive(patterns) {
       return [new lits[get_typename(pattern[1])]()]
     else if (pattern[0] in lits)
       return [new lits[pattern[0]]()]
+    else if (pattern[0] === "typed") { // for arbitrary typed variables, return all satisfied tags
+      let type = pattern[1]
+      let family = families[type]
+      let cases = []
+      for (const t of family) {
+        cases.push(new Tag(t, new Row(new Array(tags[t].arity).fill(new Wild().satisfied())).satisfied()).satisfied())
+      }
+      return cases
+    }
 
     // from tags, infer wildcards in place of arguments and all other tags in the same family
     if (tag_bound(pattern[0])) {

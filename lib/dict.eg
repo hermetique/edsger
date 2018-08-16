@@ -3,6 +3,9 @@ import prelude
 data leaf | _ _ node-value _ node
 
 # combinator for traversing dictionaries
+# a = value to return at leaf nodes (key not found)
+# k = key to operate on
+# f = function to apply when key is found
 
 leaf a k f dict-rec ≡ a
 (l k' a' r node) a k f dict-rec ≡

@@ -23,16 +23,16 @@ a b expr c d expr gt ≡ a b expr c d expr ">" 70 binop
 a b expr c d expr le ≡ a b expr c d expr "\\le " 70 binop
 a b expr c d expr ge ≡ a b expr c d expr "\\ge " 70 binop
 a b expr c d expr , ≡ a b expr c d expr "," 70 binop
-a _ expr c _ expr / ≡ "\\frac{" a ++ "}{" ++ c ++ "}" ++ 0 expr
+a _ expr c _ expr / ≡ "\\frac{" a show ++ "}{" ++ c show ++ "}" ++ 0 expr
 
 c _ expr . ≡ λ a _ expr → c a parenthesize ++ 50 expr
 
-a b expr abs ≡ "{\\left|" a ++ "\\right|}" ++ 0 expr
-a b expr norm ≡ "{\\lVert " a ++ "\\rVert}" ++ 0 expr
+a b expr abs ≡ "{\\left|" a show ++ "\\right|}" ++ 0 expr
+a b expr norm ≡ "{\\lVert " a show ++ "\\rVert}" ++ 0 expr
 
-a _ expr c _ expr ^ ≡ "{" a ++ "}^{" ++ c ++ "}" ++ 0 expr
-a b expr c _ expr int ≡ "\\int " a b expr 50 wrap ++ "~\\mathrm{d}" ++ c ++ 50 expr
-a b expr c _ expr der ≡ "\\frac{\\mathrm{d}}{\\mathrm{d}" c ++ "}" ++ a b expr 50 wrap ++ 50 expr
+a _ expr c _ expr ^ ≡ "{" a show ++ "}^{" ++ c show ++ "}" ++ 0 expr
+a b expr c _ expr int ≡ "\\int " a b expr 50 wrap ++ "~\\mathrm{d}" ++ c show ++ 50 expr
+a b expr c _ expr der ≡ "\\frac{\\mathrm{d}}{\\mathrm{d}" c show ++ "}" ++ a b expr 50 wrap ++ 50 expr
 
 l (n _ expr) cases ≡ (nil l cons) (n 1 -) cases' 90 expr where
   l 0 cases' ≡ "\\begin{cases}" l [show] map "\\\\" intercalate ++ "\\end{cases}" ++

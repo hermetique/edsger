@@ -37,10 +37,10 @@ leaf k f function adjust ≡ leaf k f dict-adjust
 
 a update ≡ [a instead] adjust
 
-# construct from list of pairs
+# construct
 
-nil from-list ≡ leaf
-t (k a pair) cons from-list ≡ (t from-list) k a insert
+nil →dict ≡ leaf
+t (k a pair) cons →dict ≡ (t →dict) k a insert
 
 # map
 

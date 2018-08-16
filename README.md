@@ -29,7 +29,7 @@ do "hello, " "world" ++
 Define functions with `==`:
 ```bash
 0 tri == 0
-n tri == n [n 1 -] tri + # square brackets are superfluous; just for visual grouping
+n tri == n (n 1 -) tri + # parentheses are superfluous; just for visual grouping
 
 do 100 tri
 # 5050
@@ -43,15 +43,15 @@ n even? == n 1 - odd?
 n odd? == n 1 - even?
 ```
 
-Quote by wrapping code in parentheses:
+Quote by wrapping code in square brackets:
 ```bash
-do (1 +)
-# (3 0 0 0 1 32)
+do [1 +]
+# [3 0 0 0 1 32]
 ```
 
 Unquote using the function application operator `.`:
 ```bash
-do 1 (1 +) .
+do 1 [1 +] .
 # 2
 ```
 
@@ -107,7 +107,7 @@ are just taken from the stack. For example,
 ```haskell
 "a"
 nil "b" cons "c" cons
-(++) <-head
+[++] <-head
 ```
 evaluates to the list `["b", "ac"]` because when applying `(++)`, `"a"` is taken from the stack and `"c"` is taken from the head of the list.
 
@@ -129,7 +129,7 @@ _ integer f == "got an integer"
 _ number f == "got a number"
 "abc" f == "got the string `abc'"
 _ string f == "got a string"
-(1 +) f == "got a successor function"
+[1 +] f == "got a successor function"
 _ function f == "got a function"
 ```
 Pattern matching on functions just compares compiled bytecode.
@@ -154,9 +154,9 @@ bad == \ nil -> 1
 #   In a definition of `bad':
 #     In a lambda expression:
 #       Patterns are not exhaustive:
-#         [nil]
+#         (nil)
 #       The following inferred cases are not satisfied:
-#         [_? _? cons?]
+#         (_? _? cons?)
 ```
 Conversely, the final pattern in this lambda expression is unreachable, since numbers include integers:
 ```bash
@@ -164,9 +164,9 @@ bad == \ a number -> "got number"; a integer -> "got integer"
 # Error:
 #   In a definition of `bad':
 #     In a lambda expression:
-#       Pattern ['1 integer] is unreachable.
+#       Pattern ('1 integer) is unreachable.
 #       Previous patterns were:
-#         ['1 number]
+#         ('1 number)
 ```
 
 Inference is recursive--for example, the compiler infers the type "optional list whose first item (if it exists) is an integer" for the following lambda expression:
@@ -176,12 +176,12 @@ bad == \ nil 3 cons itself -> 1
 #   In a definition of `bad':
 #     In a lambda expression:
 #       Patterns are not exhaustive:
-#         [[[nil] [3 int] cons] itself]
+#         (((nil) (3 int) cons) itself)
 #       The following inferred cases are not satisfied:
 #         nothing?
-#         [nil? itself?]
-#         [[nil? [integer? ≠ 3] cons?] itself?]
-#         [[[_? _? cons?] integer? cons?] itself?]
+#         (nil? itself?)
+#         ((nil? (integer? ≠ 3) cons?) itself?)
+#         (((_? _? cons?) integer? cons?) itself?)
 ```
 
 Since new cases can be added to function definitions at any time, function definitions are only checked 
@@ -201,15 +201,15 @@ gives
 Error:
   In the definition of `bad':
     Patterns are not exhaustive:
-      [nil]
-      [1 int]
-      [false]
-      [abc str]
+      (nil)
+      (1 int)
+      (false)
+      (abc str)
     The following inferred cases are not satisfied:
-      [_? _? cons?]
-      [integer? ≠ 1]
+      (_? _? cons?)
+      (integer? ≠ 1)
       true?
-      [string? ≠ abc]
+      (string? ≠ abc)
 ```
 
 ## Miscellaneous
@@ -226,7 +226,7 @@ A `where` clause defines local bindings for a function definition:
 n fib == 1 1 n fib' instead where
   _ a instead == a
   a b 0 fib' == a b
-  a b n fib' == [a b +] a [n 1 -] fib'
+  a b n fib' == (a b +) a (n 1 -) fib'
 ```
 
 The `bytecode` keyword lets you write bytecode directly.
@@ -256,7 +256,7 @@ do with latex
 `with` can also be useful for defining lists of literals:
 ```python
 nil with cons 1 2 3 4 5 6 7
-# [[[[[nil 1 cons] 2 cons] 3 cons] 4 cons] 5 cons]
+# (((((nil 1 cons) 2 cons) 3 cons) 4 cons) 5 cons)
 ```
 
 ## Whitespace

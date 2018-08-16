@@ -838,7 +838,7 @@ function extract_patterns(bytes) {
 // pretty-print a pattern
 function pattern2str(pattern) {
   if (pattern.length === 0)
-    return "[]"
+    return "()"
 
   // variables match anything
   if (pattern[0] === "var")
@@ -846,15 +846,15 @@ function pattern2str(pattern) {
 
   // integers
   if (pattern[0] === "int")
-    return "[" + pattern[1] + " int]"
+    return "(" + pattern[1] + " int)"
 
   // strings
   if (pattern[0] === "str")
-    return "[" + pattern[1] + " str]"
+    return "(" + pattern[1] + " str)"
 
   // floats
   if (pattern[0] === "num")
-    return "[" + pattern[1] + " num]"
+    return "(" + pattern[1] + " num)"
 
   // wilds
   if (pattern[0] === "wild")
@@ -862,30 +862,30 @@ function pattern2str(pattern) {
 
   // integer variables
   if (pattern[0] === "intvar")
-    return "['" + pattern[1] + " integer]"
+    return "('" + pattern[1] + " integer)"
 
   // string variables
   if (pattern[0] === "strvar")
-    return "['" + pattern[1] + " string]"
+    return "('" + pattern[1] + " string)"
 
   // float variables
   if (pattern[0] === "numvar")
-    return "['" + pattern[1] + " number]"
+    return "('" + pattern[1] + " number)"
 
   // function variables
   if (pattern[0] === "funvar")
-    return "['" + pattern[1] + " function]"
+    return "('" + pattern[1] + " function)"
 
   // functions
   if (pattern[0] === "fun")
-    return "(" + pattern[1].join(" ") + ")"
+    return "[" + pattern[1].join(" ") + "]"
 
   // tags are just numbers > 3
   if (!isNaN(pattern[0])) {
     let tag = parseInt(pattern[0])
     if (tag_bound(tag))
       tag = get_tag(tag)
-    return "[" + pattern[1].map(a => pattern2str(a) + " ").join("") + tag.toString() + "]"
+    return "(" + pattern[1].map(a => pattern2str(a) + " ").join("") + tag.toString() + ")"
   }
 
   // array of subpatterns
@@ -1091,8 +1091,8 @@ function check_exhaustive(patterns) {
   class Fun extends LitInference {
     constructor(values={}, is_satisfied=false) { super(values, is_satisfied) }
     toString() {
-      let suffix = "function" + super.toString(a => "(" + a.replace(/,/g, " ") + ")")
-      return dict_empty(this.values) ? suffix : "[" + suffix + "]"
+      let suffix = "function" + super.toString(a => "[" + a.replace(/,/g, " ") + "]")
+      return dict_empty(this.values) ? suffix : "(" + suffix + ")"
     }
     copy() { return new Fun(dict_copy(this.values), this.is_satisfied) }
     equals(b) { return b instanceof Fun
@@ -1104,7 +1104,7 @@ function check_exhaustive(patterns) {
     promoted(v) { return new Num(this.values, this.is_satisfied, false) }
     toString() {
       let suffix = "integer" + super.toString(a => parseInt(a).toString())
-      return dict_empty(this.values) ? suffix : "[" + suffix + "]"
+      return dict_empty(this.values) ? suffix : "(" + suffix + ")"
     }
     copy() { return new Int(dict_copy(this.values), this.is_satisfied) }
     equals(b) { return b instanceof Int
@@ -1121,11 +1121,11 @@ function check_exhaustive(patterns) {
       let suffix = "number" + super.toString(a => parseFloat(a).toString())
       return dict_empty(this.values)
                ? (this.has_integers
-                    ? "[" + suffix + " /= any integer]"
+                    ? "(" + suffix + " /= any integer)"
                     : suffix)
                : (this.has_integers
-                    ? "[" + suffix + " or any integer]"
-                    : "[" + suffix + "]")
+                    ? "(" + suffix + " or any integer)"
+                    : "(" + suffix + ")")
     }
     copy() { return new Num(dict_copy(this.values), this.is_satisfied, this.has_integers) }
     with_integers() { let copy = this.copy(); copy.has_integers = true; return copy }
@@ -1136,7 +1136,7 @@ function check_exhaustive(patterns) {
   }
   class Str extends LitInference {
     constructor(values={}, is_satisfied=false) { super(values, is_satisfied) }
-    toString() { return "[string" + super.toString(a => JSON.stringify(a)) + "]" }
+    toString() { return "(string" + super.toString(a => JSON.stringify(a)) + ")" }
     copy() { return new Str(dict_copy(this.values), this.is_satisfied) }
     equals(b) { return b instanceof Str
                     && b.is_satisfied === this.is_satisfied
@@ -1162,7 +1162,7 @@ function check_exhaustive(patterns) {
     constructor(name, args, is_satisfied=false) { super(is_satisfied); this.name = name; this.args = args }
     toString() {
       let suffix = this.name + super.toString()
-      return this.args.empty() ? suffix : "[" + this.args.toString() + " " + suffix + "]"
+      return this.args.empty() ? suffix : "(" + this.args.toString() + " " + suffix + ")"
     }
     copy() { return new Tag(this.name, this.args.copy(), this.is_satisfied) }
     empty() { return this.args.empty() }

@@ -51,6 +51,8 @@ a itself f function map ≡ a f . itself
 a left _ function map ≡ a left
 a right f function map ≡ a f . right
 
+a b pair f function map ≡ a b f . pair
+
 nil _ function map ≡ nil
 a b cons f function map ≡ a f map b f . cons
 

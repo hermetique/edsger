@@ -130,20 +130,29 @@ a b cons f function filter ≡ a f filter b f . [b cons] when
 nothing nothing <> ≡ nothing _ itself <> ≡ _ itself nothing <> ≡ nothing
 a itself b itself <> ≡ a b <> itself
 
+a number b number <> ≡ a b +
+
+a function b function <> ≡ [a . b .]
+
+a b pair c d pair <> ≡ (a c <>) (b d <>) pair
+
+nil a <> ≡ a nil <> ≡ a
+a (b c cons) <> ≡ (a b <>) c cons 
+
 # monoids
 
 data mempty
 
 mempty a ++ ≡ a mempty ++ ≡ a
 
-a number b number ++ ≡ a b +
+a number b number ++ ≡ a b <>
 
-a function b function ++ ≡ [a . b .]
+a function b function ++ ≡ a b <>
 
-a b pair c d pair ++ ≡ (a c ++) (b d ++) pair
+a b pair c d pair ++ ≡ a b pair c d pair <>
 
 nil a ++ ≡ a nil ++ ≡ a
-a b c cons ++ ≡ (a b ++) c cons
+a (b c cons) ++ ≡ a (b c cons) <>
 
 # folds/foldable
 

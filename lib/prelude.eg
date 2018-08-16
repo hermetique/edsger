@@ -135,6 +135,8 @@ a b cons f function filter ≡ a f filter b f . [b cons] when
 
 # semigroup
 
+a string b string <> ≡ a b ++
+
 a number b number <> ≡ a b +
 
 a function b function <> ≡ [a . b .]
@@ -163,13 +165,11 @@ a number b number ++ ≡ a b <>
 
 a function b function ++ ≡ a b <>
 
-true true ++ ≡ true false ++ ≡ false true ++ ≡ true
-false false ++ ≡ false
+a bool b bool ++ ≡ a b <>
 
-(a b ,) (c d ,) ++ ≡ (a b ,) (c d ,) <>
+a pair b pair ++ ≡ a b <>
 
-nil a ++ ≡ a nil ++ ≡ a
-a (b c cons) ++ ≡ a (b c cons) <>
+a list b list ++ ≡ a b <>
 
 # folds/foldable
 

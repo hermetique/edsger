@@ -109,7 +109,7 @@ are just taken from the stack. For example,
 nil "b" cons "c" cons
 [++] <-head
 ```
-evaluates to the list `["b", "ac"]` because when applying `(++)`, `"a"` is taken from the stack and `"c"` is taken from the head of the list.
+evaluates to the list `["b", "ac"]` because when applying `[++]`, `"a"` is taken from the stack and `"c"` is taken from the head of the list.
 
 Functions can be overloaded by just defining patterns that match on different tags.
 
@@ -255,7 +255,7 @@ do with latex
 
 `with` can also be useful for defining lists of literals:
 ```python
-nil with cons 1 2 3 4 5 6 7
+nil with cons 1 2 3 4 5
 # (((((nil 1 cons) 2 cons) 3 cons) 4 cons) 5 cons)
 ```
 

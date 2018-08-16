@@ -194,6 +194,7 @@ Some unicode characters get replaced with ascii approximations during preprocess
 - `≠` becomes `/=`
 - `≤` becomes `=<`
 - `≥` becomes `>=`
+- Greek letters become their names (`α` becomes `alpha`, `Γ` becomes `Gamma`, etc.)
 
 A `where` clause defines local bindings for a function definition:
 ```haskell

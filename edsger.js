@@ -12,6 +12,27 @@ const is_brace = c => is_open_brace(c) || is_close_brace(c)
 const is_superfluous_brace = c => c === "(" || c === ")"
 const terminator = ";"
 const is_special = c => c === "|" || c == terminator || is_brace(c)
+const to_ascii = s => {
+  const map = {
+    // lambdas and arrows
+    "λ": "\\", "→": "->", "←": "<-",
+
+    // inequalities
+    "≡": "==", "≠": "/=", "≤": "=<", "≥": ">=",
+
+    // greek lowercase
+    "α": "alpha", "β": "beta", "γ": "gamma", "δ": "delta", "ε": "epsilon",
+    "η": "eta", "θ": "theta", "κ": "kappa", "μ": "mu", "π": "pi", "ρ": "rho",
+    "σ": "sigma", "τ": "tau", "φ": "phi", "ψ": "psi", "ω": "omega", 
+
+    // greek uppercase
+    "Γ": "Gamma", "Δ": "Delta", "Θ": "Theta", "Π": "Pi", "Σ": "Sigma",
+    "Φ": "Phi", "Ψ": "Psi", "Ω": "Omega", 
+  }
+  for (const unicode in map)
+    s = s.replace(new RegExp(unicode, "g"), map[unicode])
+  return s
+}
 
 // String -> [Token ~ String]
 function lex(s, with_coords=false) {
@@ -132,13 +153,6 @@ function preprocess(s) {
       stack.pop()
   }
   const last_indent = () => stack.length > 0 ? stack[stack.length - 1][1] : 0
-  const to_ascii = s => s.replace(/λ/g, "\\")
-                         .replace("→", "->")
-                         .replace("←", "<-")
-                         .replace("≡", "==")
-                         .replace("≠", "/=")
-                         .replace("≤", "=<")
-                         .replace("≥", ">=")
 
   for (const [indent, line] of lines) {
     dedent(indent)

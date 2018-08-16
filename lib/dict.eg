@@ -17,8 +17,8 @@ leaf a k f dict-rec ≡ a
 
 k a dict-insert ≡ (leaf k a leaf node) k [a ->node-value] dict-rec
 
-leaf k a insert ≡ leaf k a dict-insert
-(l k' a' r node) k a insert ≡ (l k' a' r node) k a dict-insert
+leaf k a pair insert ≡ leaf k a dict-insert
+(l k' a' r node) k a pair insert ≡ (l k' a' r node) k a dict-insert
 
 # find
 

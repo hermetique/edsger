@@ -9,5 +9,5 @@ a leaf f function map ≡ a f . leaf
 a b branch f function map ≡ a f map b f map branch
 
 do
-  3 itself (1 +) map (2 /) map show
-  1 leaf 2 leaf branch 3 leaf 4 leaf branch branch 5 leaf branch (2 *) map show
+  3 itself [1 +] map [2 /] map show
+  1 leaf 2 leaf branch 3 leaf 4 leaf branch branch 5 leaf branch [2 *] map show

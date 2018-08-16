@@ -7,7 +7,7 @@ const is_space = c => /\s/.test(c)
 const is_open_brace = c => c.length === 1 && /\[|\{|\(/.test(c)
 const is_close_brace = c => c.length === 1 && /\)|\}|\]/.test(c)
 const is_brace = c => is_open_brace(c) || is_close_brace(c)
-const is_superfluous_brace = c => c === "[" || c === "]"
+const is_superfluous_brace = c => c === "(" || c === ")"
 const terminator = ";"
 const is_special = c => c === "|" || c == terminator || is_brace(c)
 
@@ -382,7 +382,7 @@ const lambda = lambda_char.right(lambda_case.terminated_by(exact(terminator))).b
                pure(["lambda"].concat(cases))).label("lambda")
 
 // quote
-const quote = exact("(").right(rec_expr.terminated_by(exact(")"))).bind(quoted =>
+const quote = exact("[").right(rec_expr.terminated_by(exact("]"))).bind(quoted =>
               pure(["quote"].concat(quoted))).label("quote")
 
 // 1 subtree of expression

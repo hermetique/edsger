@@ -14,7 +14,7 @@ f function 1 rep ≡ f .
 f function n integer rep ≡ f . f n 1 - rep
 
 0 base ind function nat-rec ≡ base
-n integer base ind function nat-rec ≡ [n 1 -] base ind nat-rec n ind .
+n integer base ind function nat-rec ≡ (n 1 -) base ind nat-rec n ind .
 
 # data types
 
@@ -116,14 +116,14 @@ a b > ≡ a b < not a b = not and
 true b function c function ite ≡ b .
 false b function c function ite ≡ c .
 
-a b function when ≡ a b () ite
+a b function when ≡ a b [] ite
 
-a b function unless ≡ a () b ite
+a b function unless ≡ a [] b ite
 
 # filter
 
 nil f function filter ≡ nil
-a b cons f function filter ≡ a f filter b f . (b cons) when
+a b cons f function filter ≡ a f filter b f . [b cons] when
 
 # monoids
 
@@ -133,7 +133,7 @@ mempty a ++ ≡ a mempty ++ ≡ a
 
 a number b number ++ ≡ a b +
 
-a function b function ++ ≡ (a . b .)
+a function b function ++ ≡ [a . b .]
 
 a b pair c d pair ++ ≡ a c ++ b d ++ pair
 
@@ -146,12 +146,12 @@ a b c cons ++ ≡ a b ++ c cons
 # folds/foldable
 
 nil a f function foldr ≡ a
-t h cons a f function foldr ≡ t [h a f .] f foldr
+t h cons a f function foldr ≡ t (h a f .) f foldr
 
 nil a f function foldl ≡ a
-t h cons a f function foldl ≡ [t a f foldl] h f .
+t h cons a f function foldl ≡ (t a f foldl) h f .
 
-concat ≡ mempty (++) foldr
+concat ≡ mempty [++] foldr
 
 # traversable
 

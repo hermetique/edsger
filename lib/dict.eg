@@ -1,0 +1,26 @@
+import prelude
+
+data leaf | _ _ _ _ node
+
+# insertion 
+
+leaf k a insert ≡ leaf k a leaf node
+[l k' a' r node] k a insert ≡
+  k' k = λ true → l k' a' r node
+           false → k' k > λ true → [l k a insert] k' a' r node
+                            false → l k' a' [r k a insert] node
+
+# retrieval
+
+leaf k find ≡ nothing
+[l k' a' r node] k find ≡
+  k' k = λ true → a' itself
+           false → k' k > λ true → l k find
+                            false → r k find
+
+# update
+
+# map
+
+leaf _ function map ≡ leaf
+[l k a r node] f function map ≡ [l f map] k [a f .] [r f map] node

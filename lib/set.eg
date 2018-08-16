@@ -9,3 +9,8 @@ d set k insert ≡ d k nothing pair insert set
 # find
 
 d set k elem ≡ d k find λ nothing → false; _ itself → true
+
+# constructors
+
+nil →set ≡ leaf set
+(a b cons) →set ≡ a →set b insert

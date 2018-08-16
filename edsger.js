@@ -538,10 +538,17 @@ function make_tagged(tag, arity) {
   push([tag, pop(arity)])
 }
 function bind_tags(typename, arr) {
-  //if (typename !== null)
-  //  typenames[typename] = Object.keys(typenames).length
+  if (typename !== null) {
+    if (typename in word_map)
+      throw ["Type name `" + typename + "' is already bound as a function"]
+    if (typename in typenames)
+      throw ["Type name `" + typename + "' is already bound"]
+    typenames[typename] = Object.keys(typenames).length
+  }
   for (const entry of arr) {
     let tag = entry[entry.length - 1]
+    if (tag in typenames)
+      throw ["Enum tag `" + tag + "' is already bound as a type name"]
     if (tag in word_map)
       throw ["Enum tag `" + tag + "' is already bound"]
   }
@@ -1849,12 +1856,13 @@ function compile_pattern(pattern, env=[]) {
     if (!Array.isArray(pat)) {
       const tag = pat
 
+      //console.log("tag =", tag, "tag in typenames =", tag in typenames, "typenames =", typenames)
       if (tag in typenames) { // typenames
         if (result.length === 0)
-          throw ["Bad pattern: typename `" + tag + "' expects a variable but got nothing"]
+          throw ["Bad pattern: type name `" + tag + "' expects a variable but got nothing"]
         const arg = result.pop()
         if (!Array.isArray(arg) || (arg[0] !== op.CASE_VAR && arg[0] !== op.CASE_WILD))
-          throw ["Bad pattern: typename `" + tag + "' expects a variable but got " + arg] // TODO: pretty-print arg
+          throw ["Bad pattern: type name `" + tag + "' expects a variable but got " + arg] // TODO: pretty-print arg
 
         let addition = typenames[tag] < 256
                          ? [op.CASE_TYPED, typenames[tag]]

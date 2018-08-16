@@ -19,10 +19,10 @@ n integer base ind function nat-rec ≡ [n 1 -] base ind nat-rec n ind .
 # data types
 
 data true | false
+data fst snd pair
 data nothing | from-itself itself
 data from-left left | from-right right
 data nil | init last cons
-data fst snd pair
 
 # pretty printer
 
@@ -31,6 +31,8 @@ a string show ≡ a
 
 true show ≡ "true"
 false show ≡ "false"
+
+a b pair show ≡ "(" a show ++ ", " ++ b show ++ ")" ++
 
 nothing show ≡ "nothing"
 a itself show ≡ a show " itself" ++
@@ -84,6 +86,8 @@ a number b number = ≡ a b bytecode 20; cmp->bool where
 true true = ≡ false false = ≡ true
 true false = ≡ false true = ≡ false
 
+a b pair c d pair = ≡ a c = b d = and
+
 a itself b itself = ≡ a b =
 nothing nothing = ≡ true
 _ itself nothing = ≡ nothing _ itself = ≡ false
@@ -128,6 +132,8 @@ mempty a ++ ≡ a mempty ++ ≡ a
 a number b number ++ ≡ a b +
 
 a function b function ++ ≡ (a . b .)
+
+a b pair c d pair ++ ≡ a c ++ b d ++ pair
 
 nothing nothing ++ ≡ nothing _ itself ++ ≡ _ itself nothing ++ ≡ nothing
 a itself b itself ++ ≡ a b ++ itself

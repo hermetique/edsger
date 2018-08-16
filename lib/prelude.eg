@@ -127,12 +127,15 @@ a b cons f function filter ≡ a f filter b f . [b cons] when
 
 # semigroup
 
-nothing nothing <> ≡ nothing _ itself <> ≡ _ itself nothing <> ≡ nothing
-a itself b itself <> ≡ a b <> itself
-
 a number b number <> ≡ a b +
 
 a function b function <> ≡ [a . b .]
+
+true true <> ≡ true false <> ≡ false true <> ≡ true
+false false <> ≡ false
+
+nothing nothing <> ≡ nothing _ itself <> ≡ _ itself nothing <> ≡ nothing
+a itself b itself <> ≡ a b <> itself
 
 a b pair c d pair <> ≡ (a c <>) (b d <>) pair
 
@@ -148,6 +151,9 @@ mempty a ++ ≡ a mempty ++ ≡ a
 a number b number ++ ≡ a b <>
 
 a function b function ++ ≡ a b <>
+
+true true ++ ≡ true false ++ ≡ false true ++ ≡ true
+false false ++ ≡ false
 
 a b pair c d pair ++ ≡ a b pair c d pair <>
 

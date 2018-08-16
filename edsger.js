@@ -519,7 +519,7 @@ let typenames = { "integer": 0
 let stack = []
 let symbols = []
 let tags = {} // { name: { .id .arity .family } }
-let families = [] // [[tags]]
+let families = new Array(Object.keys(typenames).length).fill([]) // [[tags]]
 let imported = {} // track imported files
 
 // vm actions
@@ -531,9 +531,15 @@ function load(n) { push(symbols[symbols.length - n]) }
 function discard(n=1) { return n === 0 ? [] : symbols.splice(-n) }
 function dup() { push(peek()) }
 function swap() { let second = stack.splice(-2, 1); stack = stack.concat(second) }
-function make_tagged(tag, arity) { push([tag, pop(arity)]) }
+function make_tagged(tag, arity) {
+  if (stack.length < arity)
+    throw ["Tried to pop " + arity + " items from stack containing just " + stack.length + ":",
+           [stack2str(stack)]]
+  push([tag, pop(arity)])
+}
 function bind_tags(typename, arr) {
-  // TODO: use typename
+  //if (typename !== null)
+  //  typenames[typename] = Object.keys(typenames).length
   for (const entry of arr) {
     let tag = entry[entry.length - 1]
     if (tag in word_map)
@@ -826,7 +832,7 @@ function extract_pattern(arity) {
       case op.CASE_FUN: {
         get(extract_byte); // discard quote opcode
         let values = get(extract_values)
-        return [["fun", values], i]
+        return [["function", values], i]
       }
       default: {
         let tag = head === op.CASE_TAG32 ? get(extract_int32) : head
@@ -902,7 +908,7 @@ function pattern2str(pattern) {
     return "(" + var2str(pattern[2]) + " " + get_typename(pattern[1]) + ")"
 
   // functions
-  if (pattern[0] === "fun")
+  if (pattern[0] === "function")
     return "[" + pattern[1].join(" ") + "]"
 
   // tags are just numbers > 3
@@ -1040,13 +1046,19 @@ function pattern_matches(pattern, item=undefined, accu={}) {
         return accu
       }
       default: {
-        //TODO: general types
+        if (!Array.isArray(item) || item[0] === op.CASE_FUN)
+          return null
+        let family = families[typenames[type]]
+        if (family.indexOf(item[0]) === -1)
+          return null
+        accu[id] = item
+        return accu
       }
     }
   }
 
   // functions
-  if (pattern[0] === "fun") {
+  if (pattern[0] === "function") {
     if (!Array.isArray(item) || item[0] !== op.CASE_FUN)
       return null
     let pattern_bytes = pattern[1]

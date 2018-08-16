@@ -19,7 +19,7 @@ n integer base ind function nat-rec ≡ (n 1 -) base ind nat-rec n ind .
 # data types
 
 data bool ≡ true | false
-data pair ≡ fst snd pair
+data pair ≡ fst snd ,
 data option ≡ nothing | from-itself itself
 data either ≡ from-left left | from-right right
 data list ≡ nil | init last cons
@@ -32,7 +32,7 @@ a string show ≡ a
 true show ≡ "true"
 false show ≡ "false"
 
-a b pair show ≡ "(" a show ++ ", " ++ b show ++ ")" ++
+a b , show ≡ "(" a show ++ ", " ++ b show ++ ")" ++
 
 nothing show ≡ "nothing"
 a itself show ≡ a show " itself" ++
@@ -51,7 +51,7 @@ a itself f function map ≡ a f . itself
 a left _ function map ≡ a left
 a right f function map ≡ a f . right
 
-a b pair f function map ≡ a (b f .) pair
+a b , f function map ≡ a (b f .) ,
 
 nil _ function map ≡ nil
 a b cons f function map ≡ (a f map) (b f .) cons
@@ -96,7 +96,7 @@ a string b string = ≡ a b cmp λ 0 → true; _ → false
 true true = ≡ false false = ≡ true
 true false = ≡ false true = ≡ false
 
-a b pair c d pair = ≡ (a c =) (b d =) and
+a b , c d , = ≡ (a c =) (b d =) and
 
 a itself b itself = ≡ a b =
 nothing nothing = ≡ true
@@ -148,7 +148,7 @@ a itself b itself <> ≡ a b <> itself
 a left _ <> ≡ _ a left <> ≡ a left
 a right b right <> ≡ a b <> right
 
-(a b pair) (c d pair) <> ≡ (a c <>) (b d <>) pair
+(a b ,) (c d ,) <> ≡ (a c <>) (b d <>) ,
 
 nil a <> ≡ a nil <> ≡ a
 a (b c cons) <> ≡ (a b <>) c cons 
@@ -166,7 +166,7 @@ a function b function ++ ≡ a b <>
 true true ++ ≡ true false ++ ≡ false true ++ ≡ true
 false false ++ ≡ false
 
-(a b pair) (c d pair) ++ ≡ (a b pair) (c d pair) <>
+(a b ,) (c d ,) ++ ≡ (a b ,) (c d ,) <>
 
 nil a ++ ≡ a nil ++ ≡ a
 a (b c cons) ++ ≡ a (b c cons) <>

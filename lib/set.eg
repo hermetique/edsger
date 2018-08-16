@@ -4,7 +4,7 @@ data _ set
 
 # insert
 
-d set k insert ≡ d k nothing pair insert set
+d set k insert ≡ d k nothing , insert set
 
 # find
 

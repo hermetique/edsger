@@ -11,7 +11,7 @@ a dup ≡ a a
 a b swap ≡ b a
 
 f function 1 rep ≡ f .
-f function n integer rep ≡ f . f n 1 - rep
+f function n integer rep ≡ f . f (n 1 -) rep
 
 0 base ind function nat-rec ≡ base
 n integer base ind function nat-rec ≡ (n 1 -) base ind nat-rec n ind .
@@ -51,10 +51,10 @@ a itself f function map ≡ a f . itself
 a left _ function map ≡ a left
 a right f function map ≡ a f . right
 
-a b pair f function map ≡ a b f . pair
+a b pair f function map ≡ a (b f .) pair
 
 nil _ function map ≡ nil
-a b cons f function map ≡ a f map b f . cons
+a b cons f function map ≡ (a f map) (b f .) cons
 
 # list operations
 
@@ -88,7 +88,7 @@ a number b number = ≡ a b bytecode 20; cmp->bool where
 true true = ≡ false false = ≡ true
 true false = ≡ false true = ≡ false
 
-a b pair c d pair = ≡ a c = b d = and
+a b pair c d pair = ≡ (a c =) (b d =) and
 
 a itself b itself = ≡ a b =
 nothing nothing = ≡ true
@@ -99,7 +99,7 @@ _ left _ right = ≡ _ right _ left = ≡ false
 
 nil nil = ≡ true
 nil _ _ cons = ≡ _ _ cons nil = ≡ false
-a b cons c d cons = ≡ b d = a c = and
+a b cons c d cons = ≡ (b d =) (a c =) and
 
 /= ≡ = not
 
@@ -135,13 +135,13 @@ a number b number ++ ≡ a b +
 
 a function b function ++ ≡ [a . b .]
 
-a b pair c d pair ++ ≡ a c ++ b d ++ pair
+a b pair c d pair ++ ≡ (a c ++) (b d ++) pair
 
 nothing nothing ++ ≡ nothing _ itself ++ ≡ _ itself nothing ++ ≡ nothing
 a itself b itself ++ ≡ a b ++ itself
 
 nil a ++ ≡ a nil ++ ≡ a
-a b c cons ++ ≡ a b ++ c cons
+a b c cons ++ ≡ (a b ++) c cons
 
 # folds/foldable
 
@@ -156,7 +156,7 @@ concat ≡ mempty [++] foldr
 # traversable
 
 nil reverse ≡ nil
-a b cons reverse ≡ nil b cons a reverse ++
+a b cons reverse ≡ (nil b cons) a reverse ++
 
 nil _ intersperse ≡ nil
 nil a cons _ intersperse ≡ nil a cons

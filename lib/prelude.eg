@@ -153,3 +153,5 @@ a b cons reverse ≡ nil b cons a reverse ++
 nil _ intersperse ≡ nil
 nil a cons _ intersperse ≡ nil a cons
 a b cons c intersperse ≡ a c intersperse c cons b cons
+
+intercalate ≡ intersperse concat

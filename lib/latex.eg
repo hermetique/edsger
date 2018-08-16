@@ -36,7 +36,7 @@ a b expr c _ expr der ≡ "\\frac{\\mathrm{d}}{\\mathrm{d}" c ++ "}" ++ a b expr
 
 l n cases ≡ nil l cons n 1 - cases' 90 expr where
   l 0 cases' ≡ "\\begin{cases}"
-               l init (str "\\\\" ++) map "" (++) foldl ++ l last str ++
+               l init (str "\\\\" ++) map concat ++ l last str ++
                "\\end{cases}" ++ where
     a _ expr str ≡ a
-  l n cases' ≡ λ case → nil case cons l ++ n 1 - cases'
+  l n cases' ≡ λ case → l case lcons n 1 - cases'

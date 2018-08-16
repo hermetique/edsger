@@ -54,6 +54,8 @@ a b cons f function map ≡ a f map b f . cons
 
 # list operations
 
+lcons ≡ nil swap cons swap ++
+
 nil head ≡ "head of empty list" fail
 nil a cons head ≡ a
 a b cons head ≡ a head
@@ -117,15 +119,11 @@ a b function unless ≡ a () b ite
 nil f function filter ≡ nil
 a b cons f function filter ≡ a f filter b f . (b cons) when
 
-# folds
-
-nil a f function foldr ≡ a
-t h cons a f function foldr ≡ t [h a f .] f foldr
-
-nil a f function foldl ≡ a
-t h cons a f function foldl ≡ [t a f foldl] h f .
-
 # monoids
+
+data mempty
+
+mempty a ++ ≡ a mempty ++ ≡ a
 
 a number b number ++ ≡ a b +
 
@@ -136,6 +134,16 @@ a itself b itself ++ ≡ a b ++ itself
 
 nil a ++ ≡ a nil ++ ≡ a
 a b c cons ++ ≡ a b ++ c cons
+
+# folds/foldable
+
+nil a f function foldr ≡ a
+t h cons a f function foldr ≡ t [h a f .] f foldr
+
+nil a f function foldl ≡ a
+t h cons a f function foldl ≡ [t a f foldl] h f .
+
+concat ≡ mempty (++) foldr
 
 # traversable
 

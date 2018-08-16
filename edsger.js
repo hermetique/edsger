@@ -940,7 +940,7 @@ function stack2str(items) {
     if (!Array.isArray(item))
       return JSON.stringify(item)
     if (item[0] === op.CASE_FUN)
-      return "(" + item[1].join(" ") + ")"
+      return "[" + item[1].join(" ") + "]"
 
     // might be a tag
     let [maybe_tag, args] = item
@@ -949,7 +949,7 @@ function stack2str(items) {
     let tag = get_tag(maybe_tag)
     if (args.length === 0)
       return tag
-    return "[" + args.map(a => item2str(a) + " ").join("") + tag + "]"
+    return "(" + args.map(a => item2str(a) + " ").join("") + tag + ")"
   }
 
   return items.map(item2str).join(" ")

@@ -225,7 +225,7 @@ import latex
 do with latex
      x 2 ^ 2 / C + x der x =
 
-# ["\\frac{\\mathrm{d}}{\\mathrm{d}x}{\\left(\\frac{{x}^{2}}{2}+C\\right)}=x" 100 expr]
+# ("\\frac{\\mathrm{d}}{\\mathrm{d}x}{\\left(\\frac{{x}^{2}}{2}+C\\right)}=x" 100 expr)
 ```
 
 `with` can also be useful for defining lists of literals:

@@ -153,6 +153,8 @@ t h cons a f function foldl ≡ (t a f foldl) h f .
 
 concat ≡ mempty [++] foldr
 
+length ≡ 0 [1 + instead] foldr
+
 # traversable
 
 nil reverse ≡ nil

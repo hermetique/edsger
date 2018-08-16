@@ -1,7 +1,27 @@
-a function . ≡ bytecode 9 1 7
-a number b number + ≡ bytecode 9 2 9 1 16
-a number b number * ≡ bytecode 9 2 9 1 17
-a number b number - ≡ bytecode 9 2 9 1 18
-a number b number / ≡ bytecode 9 2 9 1 19
-a string b string ++ ≡ bytecode 9 2 9 1 21
 a string fail ≡ bytecode 9 1 1
+
+a function . ≡ bytecode 9 1 7
+
+# numbers
+
+a number b number + ≡ bytecode 9 2 9 1 16
+
+a number b number * ≡ bytecode 9 2 9 1 17
+
+a number b number - ≡ bytecode 9 2 9 1 18
+
+a number b number / ≡ bytecode 9 2 9 1 19
+
+a number b number cmp ≡ bytecode 9 2 9 1 20
+
+# strings
+
+a string b string ++ ≡ bytecode 9 2 9 1 21
+
+a string b string cmp ≡ bytecode 9 2 9 1 22
+
+a string init ≡ bytecode 9 1 23
+
+a string last ≡ bytecode 9 1 24
+
+s string a integer b integer substr ≡ bytecode 9 3 9 2 9 1 25

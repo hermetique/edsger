@@ -468,7 +468,11 @@ const op = {
   DIV: 19,
   CMP: 20,
 
-  CAT: 21,        // string manipulation
+  STR_CAT: 21,        // string manipulation
+  STR_CMP: 22,
+  STR_INIT: 23,
+  STR_LAST: 24,
+  STR_STR: 25,
 }
 let n_intrinsics = Object.keys(op).length
 let words = new Array(n_intrinsics).fill([])
@@ -1486,7 +1490,11 @@ function disassemble(bytes, indent_by=0) {
       case op.SUB: put("sub"); brk(); break
       case op.DIV: put("div"); brk(); break
       case op.CMP: put("cmp"); brk(); break
-      case op.CAT: put("cat"); brk(); break
+      case op.STR_CAT: put("str_cat"); brk(); break
+      case op.STR_CMP: put("str_cmp"); brk(); break
+      case op.STR_INIT: put("str_init"); brk(); break
+      case op.STR_LAST: put("str_last"); brk(); break
+      case op.STR_STR: put("str_str"); brk(); break
       default:
         result.push(pretty(b)); brk(); break
     }
@@ -1638,8 +1646,12 @@ function run(bytes) {
       case op.MUL: push(num() * num()); break
       case op.SUB: { let a = num(); let b = num(); push(b - a) } break
       case op.DIV: { let a = num(); let b = num(); push(b / a) } break
-      case op.CMP: { let a = num(); let b = num(); push(b == a ? 0 : b < a ? -1 : 1) } break
-      case op.CAT: { let a = item(); let b = item(); push(b + a) } break
+      case op.CMP: { let a = num(); let b = num(); push(b === a ? 0 : b < a ? -1 : 1) } break
+      case op.STR_CAT: { let a = item(); let b = item(); push(b + a) } break
+      case op.STR_CMP: { let a = item(); let b = item(); push(b === a ? 0 : b < a ? -1 : 1) } break
+      case op.STR_INIT: push((a => a.substring(0, a.length - 1))(item())); break
+      case op.STR_LAST: push((a => a.substring(a.length - 1))(item())); break
+      case op.STR_STR: { let b = num(); let a = num(); let s = item(); push(s.substring(b, a)) } break
       default:
         if (!(b in words))
           throw ["Unknown bytecode instruction " + b]

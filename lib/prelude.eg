@@ -68,6 +68,14 @@ nil tail ≡ "tail of empty list" fail
 nil a cons tail ≡ nil
 a b cons tail ≡ a tail b cons
 
+# packing and unpacking strings
+
+"" unpack ≡ nil
+a string unpack ≡ (a init unpack) (a last) cons
+
+nil pack ≡ ""
+(a b string cons) pack ≡ a pack b ++
+
 # predicates
 
 false not ≡ true
@@ -170,6 +178,12 @@ t h cons a f function foldr ≡ t (h a f .) f foldr
 
 nil a f function foldl ≡ a
 t h cons a f function foldl ≡ (t a f foldl) h f .
+
+"" a f function foldr ≡ a
+s string a f function foldr ≡ s init (s last a f .) f foldr
+
+"" a f function foldl ≡ a
+s string a f function foldl ≡ (s init a f foldl) s last f .
 
 concat ≡ mempty [++] foldr
 

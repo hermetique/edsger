@@ -10,6 +10,11 @@ leaf k a insert ≡ leaf k a leaf node
            false → k' k > λ true → (l k a insert) k' a' r node
                             false → l k' a' (r k a insert) node
 
+# construct from list of pairs
+
+nil from-list ≡ leaf
+t (k a pair) cons from-list ≡ (t from-list) k a insert
+
 # find
 
 leaf k find ≡ nothing

@@ -125,6 +125,11 @@ a b function unless ≡ a [] b ite
 nil f function filter ≡ nil
 a b cons f function filter ≡ a f filter b f . [b cons] when
 
+# semigroup
+
+nothing nothing <> ≡ nothing _ itself <> ≡ _ itself nothing <> ≡ nothing
+a itself b itself <> ≡ a b <> itself
+
 # monoids
 
 data mempty
@@ -136,9 +141,6 @@ a number b number ++ ≡ a b +
 a function b function ++ ≡ [a . b .]
 
 a b pair c d pair ++ ≡ (a c ++) (b d ++) pair
-
-nothing nothing ++ ≡ nothing _ itself ++ ≡ _ itself nothing ++ ≡ nothing
-a itself b itself ++ ≡ a b ++ itself
 
 nil a ++ ≡ a nil ++ ≡ a
 a b c cons ++ ≡ (a b ++) c cons

@@ -89,9 +89,9 @@ _ _ or ≡ true
 
 # equality
 
-a number b number = ≡ a b bytecode 20; cmp->bool where
-  0 cmp->bool ≡ true
-  _ cmp->bool ≡ false
+a number b number = ≡ a b bytecode 20; cmp→bool where
+  0 cmp→bool ≡ true
+  _ cmp→bool ≡ false
 
 true true = ≡ false false = ≡ true
 true false = ≡ false true = ≡ false
@@ -113,9 +113,9 @@ a b cons c d cons = ≡ (b d =) (a c =) and
 
 # ordering
 
-a number b number < ≡ a b bytecode 20; cmp->bool where
-  -1 cmp->bool ≡ true
-  _ cmp->bool ≡ false
+a number b number < ≡ a b bytecode 20; cmp→bool where
+  -1 cmp→bool ≡ true
+  _ cmp→bool ≡ false
 
 a b > ≡ a b < not a b = not and
 
@@ -189,13 +189,11 @@ concat ≡ mempty [++] foldr
 
 length ≡ 0 [1 + instead] foldr
 
-# traversable
-
-nil reverse ≡ nil
-a b cons reverse ≡ (nil b cons) a reverse ++
-
 nil _ intersperse ≡ nil
 nil a cons _ intersperse ≡ nil a cons
 (a b cons) c intersperse ≡ (a c intersperse) c cons b cons
 
 intercalate ≡ intersperse concat
+
+nil reverse ≡ nil
+a b cons reverse ≡ (nil b cons) a reverse ++

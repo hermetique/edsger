@@ -1,0 +1,10 @@
+import prelude
+
+a number ² ≡ a a *
+
+a number ! ≡ a 1 [*] nat-rec
+
+do
+  3 ² !
+
+# 362880

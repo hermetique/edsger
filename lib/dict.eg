@@ -1,19 +1,21 @@
 import prelude
 
-data leaf | _ _ _ _ node
+data leaf | _ _ node-value _ node
+
+# combinator for traversing dictionaries
+
+leaf a k f dict-rec ≡ a
+(l k' a' r node) a k f dict-rec ≡
+  k' k = λ true → l k' a' r node f .
+           false → k' k > λ true → (l a k f dict-rec) k' a' r node
+                            false → l k' a' (r a k f dict-rec) node
 
 # insert
 
-leaf k a insert ≡ leaf k a leaf node
-(l k' a' r node) k a insert ≡
-  k' k = λ true → l k' a' r node
-           false → k' k > λ true → (l k a insert) k' a' r node
-                            false → l k' a' (r k a insert) node
+k a dict-insert ≡ (leaf k a leaf node) k [a ->node-value] dict-rec
 
-# construct from list of pairs
-
-nil from-list ≡ leaf
-t (k a pair) cons from-list ≡ (t from-list) k a insert
+leaf k a insert ≡ leaf k a dict-insert
+(l k' a' r node) k a insert ≡ (l k' a' r node) k a dict-insert
 
 # find
 
@@ -23,15 +25,19 @@ leaf k find ≡ nothing
            false → k' k > λ true → l k find
                             false → r k find
 
-# update
+# adjust and update
 
-leaf k _ function adjust ≡ leaf
-(l k' a' r node) k f function adjust ≡
-  k' k = λ true → l k' (a' f .) r node
-           false → k' k > λ true → (l k f adjust) k' a' r node
-                            false → l k' a' (r k f adjust) node
+k f function dict-adjust ≡ leaf k [f <-node-value] dict-rec
+
+leaf k f function adjust ≡ leaf k f dict-adjust
+(l k' a r node) k f function adjust ≡ (l k' a r node) k f dict-adjust
 
 a update ≡ [a instead] adjust
+
+# construct from list of pairs
+
+nil from-list ≡ leaf
+t (k a pair) cons from-list ≡ (t from-list) k a insert
 
 # map
 

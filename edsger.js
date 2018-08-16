@@ -249,6 +249,12 @@ class Parser {
       return result
     })
   }
+  maybe() {
+    return new Parser(s => {
+      let result = this.parse(s)
+      return parse_failed(result) ? [s, null] : result
+    }).label("at most one `" + this.name + "'")
+  }
   many() {
     return new Parser(s => {
       let results = []
@@ -355,10 +361,12 @@ const rec_expr = new Parser(s => expression.parse(s))
 const exact = token => one.guard(t => t === token).label(token)
 
 // "data" definitions
+const datadef_typename = one.left(exact("==").or(exact("≡"))).maybe()
 const datadef_entry = one.guard(t => t !== terminator && t !== "|").many().label("data entry")
-const datadef = exact("data").right(datadef_entry.separated_by(exact("|")))
-                             .left(exact(terminator)).bind(entries =>
-                pure(["data"].concat(entries))).label("data definition")
+const datadef = exact("data").right(datadef_typename).bind(m_typename =>
+                datadef_entry.separated_by(exact("|")).left(exact(terminator)).bind(entries =>
+                (m_typename === null ? pure() : exact(terminator)).right(
+                pure(["data", m_typename].concat(entries))))).label("data definition")
 
 // pattern (which can show up in function definitions and in lambdas)
 const pattern_terminated_by = p => new Parser(s => quote.parse(s)).or(term).terminated_by(p).bind(terms =>
@@ -429,9 +437,15 @@ const collapse = (parser, tokens, repl_mode=false) => {
 }
 
 // complete parser. [Token] -> [AST] or throw
-const parser = definition.or(import_statement).or(datadef).or(do_block).many()
+const parser = datadef.or(import_statement).or(definition).or(do_block).many()
 const parse = (tokens, repl_mode=false) =>
                 collapse(parser, tokens, repl_mode)
+
+//console.log(preprocess("data a ≡ a | b\ndata c | d"))
+//console.log(JSON.stringify(parser.parse(lex(preprocess("data a ≡ a | b\ndata c | d")))))
+//console.log(preprocess("data a | b\ndata c | d"))
+//console.log(JSON.stringify(parser.parse(lex(preprocess("data a | b\ndata c | d")))))
+//process.exit()
 
 //let s = "l == (nil 1 f where f == cons)"
 //console.log(definition.parse(lex(preprocess(s))))
@@ -518,7 +532,8 @@ function discard(n=1) { return n === 0 ? [] : symbols.splice(-n) }
 function dup() { push(peek()) }
 function swap() { let second = stack.splice(-2, 1); stack = stack.concat(second) }
 function make_tagged(tag, arity) { push([tag, pop(arity)]) }
-function bind_tags(arr) {
+function bind_tags(typename, arr) {
+  // TODO: use typename
   for (const entry of arr) {
     let tag = entry[entry.length - 1]
     if (tag in word_map)
@@ -1289,7 +1304,7 @@ function check_exhaustive(patterns) {
 
   // return a list of possible types given a pattern
   const infer_from = pattern => {
-    console.log("pattern =", pattern2str(pattern), JSON.stringify(pattern))
+    //console.log("pattern =", pattern2str(pattern), JSON.stringify(pattern))
     // from empty sequence, infer empty sequence
     if (Array.isArray(pattern) && pattern.length === 0)
       return [new Row([])]
@@ -1721,7 +1736,7 @@ const is_bound = (name, env) => {
 }
 
 function compile_datadef(datadef) {
-  bind_tags(datadef.slice(1))
+  bind_tags(datadef[1], datadef.slice(2))
   return []
 }
 

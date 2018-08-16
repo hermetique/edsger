@@ -18,11 +18,11 @@ n integer base ind function nat-rec ≡ (n 1 -) base ind nat-rec n ind .
 
 # data types
 
-data true | false
-data fst snd pair
-data nothing | from-itself itself
-data from-left left | from-right right
-data nil | init last cons
+data bool ≡ true | false
+data pair ≡ fst snd pair
+data option ≡ nothing | from-itself itself
+data either ≡ from-left left | from-right right
+data list ≡ nil | init last cons
 
 # pretty printer
 

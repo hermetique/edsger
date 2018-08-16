@@ -1055,11 +1055,14 @@ function pattern_matches(pattern, item=undefined, accu={}) {
       default: {
         if (!Array.isArray(item) || item[0] === op.CASE_FUN)
           return null
-        let family = families[typenames[type]]
-        if (family.indexOf(item[0]) === -1)
-          return null
-        accu[id] = item
-        return accu
+        let family = families[type]
+        for (const t of family) {
+          if (t in tags && tags[t].id === item[0]) {
+            accu[id] = item
+            return accu
+          }
+        }
+        return null
       }
     }
   }

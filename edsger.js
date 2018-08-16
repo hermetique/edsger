@@ -137,6 +137,8 @@ function preprocess(s) {
                          .replace("←", "<-")
                          .replace("≡", "==")
                          .replace("≠", "/=")
+                         .replace("≤", "=<")
+                         .replace("≥", ">=")
 
   for (const [indent, line] of lines) {
     dedent(indent)

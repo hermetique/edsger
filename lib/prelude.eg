@@ -70,11 +70,11 @@ a b cons tail ≡ a tail b cons
 
 # packing and unpacking strings
 
-"" unpack ≡ nil
-a string unpack ≡ (a init unpack) (a last) cons
+"" →list ≡ nil
+a string →list ≡ (a init →list) (a last) cons
 
-nil pack ≡ ""
-(a b string cons) pack ≡ a pack b ++
+nil →string ≡ ""
+(a b string cons) →string ≡ a →string b ++
 
 # predicates
 

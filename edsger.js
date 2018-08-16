@@ -484,7 +484,7 @@ const op = {
   DIV: 19,
   CMP: 20,
 
-  STR_CAT: 21,        // string manipulation
+  STR_CAT: 21,    // string manipulation
   STR_CMP: 22,
   STR_INIT: 23,
   STR_LAST: 24,
@@ -494,11 +494,11 @@ let n_intrinsics = Object.keys(op).length
 let words = new Array(n_intrinsics).fill([])
 let word_map = {} // { name: bytecode index }
 let partial_words = {} // { name: true }. dict of partial functions
-let primitive_tags = { "integer": op.CASE_INTV
-                     , "number": op.CASE_NUMV
-                     , "string": op.CASE_STRV
-                     , "function": op.CASE_FUNV
-                     }
+let typenames = { "integer": op.CASE_INTV
+                , "number": op.CASE_NUMV
+                , "string": op.CASE_STRV
+                , "function": op.CASE_FUNV
+                }
 
 // vm state: stack + symbol stack + tags
 let stack = []
@@ -860,24 +860,26 @@ function extract_patterns(bytes) {
 
 // pretty-print a pattern
 function pattern2str(pattern) {
+  const var2str = a => a === 0 ? "_" : "'" + a
+
   if (pattern.length === 0)
     return "()"
 
   // variables match anything
   if (pattern[0] === "var")
-    return "'" + pattern[1]
+    return var2str(pattern[1])
 
   // integers
   if (pattern[0] === "int")
-    return "(" + pattern[1] + " int)"
+    return "(" + pattern[1] + " integer)"
 
   // strings
   if (pattern[0] === "str")
-    return "(" + pattern[1] + " str)"
+    return "(" + JSON.stringify(pattern[1]) + " string)"
 
   // floats
   if (pattern[0] === "num")
-    return "(" + pattern[1] + " num)"
+    return "(" + pattern[1] + " number)"
 
   // wilds
   if (pattern[0] === "wild")
@@ -885,19 +887,19 @@ function pattern2str(pattern) {
 
   // integer variables
   if (pattern[0] === "intvar")
-    return "('" + pattern[1] + " integer)"
+    return "(" + var2str(pattern[1]) + " integer)"
 
   // string variables
   if (pattern[0] === "strvar")
-    return "('" + pattern[1] + " string)"
+    return "(" + var2str(pattern[1]) + " string)"
 
   // float variables
   if (pattern[0] === "numvar")
-    return "('" + pattern[1] + " number)"
+    return "(" + var2str(pattern[1]) + " number)"
 
   // function variables
   if (pattern[0] === "funvar")
-    return "('" + pattern[1] + " function)"
+    return "(" + var2str(pattern[1]) + " function)"
 
   // functions
   if (pattern[0] === "fun")
@@ -1735,7 +1737,7 @@ function compile_datadef(datadef) {
 // get all bound variables in a pattern
 function extract_env(pattern) {
   if (!Array.isArray(pattern)) // tag or unescaped variable
-    return (pattern in tags) || (pattern in primitive_tags)
+    return (pattern in tags) || (pattern in typenames)
              ? []
              : [pattern]
   let head = pattern[0]
@@ -1829,17 +1831,17 @@ function compile_pattern(pattern, env=[]) {
     if (!Array.isArray(pat)) {
       const tag = pat
 
-      if (tag in primitive_tags) { // primitive tags
+      if (tag in typenames) { // typenames
         if (result.length === 0)
-          throw ["Bad pattern: primitive tag `" + tag + "' expects a variable but got nothing"]
+          throw ["Bad pattern: typename `" + tag + "' expects a variable but got nothing"]
         const arg = result.pop()
         if (!Array.isArray(arg) || (arg[0] !== op.CASE_VAR && arg[0] !== op.CASE_WILD))
-          throw ["Bad pattern: primitive tag `" + tag + "' expects a variable but got " + arg] // TODO: pretty-print arg
+          throw ["Bad pattern: typename `" + tag + "' expects a variable but got " + arg] // TODO: pretty-print arg
 
         if (arg[0] === op.CASE_WILD)
-          result.push([primitive_tags[tag], 0])
+          result.push([typenames[tag], 0])
         else
-          result.push([primitive_tags[tag], arg[1] + 1])
+          result.push([typenames[tag], arg[1] + 1])
         //console.log("result =", result);
       }
       

@@ -1,3 +1,5 @@
+Array.prototype.bind = function(f) { return this.map(f).reduce((a, b) => a.concat(b), []) }
+
 // -------------------- lexer --------------------
 
 const path = process.argv[2]
@@ -563,6 +565,7 @@ function bind_tags(arr) {
                  ["pattern"].concat(pattern).concat([tag]).concat([["var", "b"]]),
                    ["expr"].concat(body)]]
       code = compile_lambda(code, [], false)
+      //console.log("disassembled =", disassemble(code), "for", accessor)
       bind("<-" + accessor, code)
 
       if (arr.length > 1) { // more than 1 case => accessor is partial
@@ -2000,10 +2003,12 @@ function compile_expr(expr, env=[], with_code=[], discarding=0) {
           let failed = false
           try {
             let id = encode_var_id(tail[0], env)
-            result = result.concat([op.LOAD, id + 1]) // TODO: nasty +1
+            result = result.concat([op.LOAD, id + 1])
+            // "var" tag needed to mark indices for later--after discarding, need subtract no. discarded
             //console.log("id =", id, e, "discarding =", discarding)
-            if (id < discarding)
-              last_use_of_discardable = result.length
+
+            //if (id < discarding)
+            last_use_of_discardable = result.length
           } catch (e) {
             //throw e
             if (with_code.length === 0)
@@ -2051,11 +2056,14 @@ function compile_expr(expr, env=[], with_code=[], discarding=0) {
     }
   }
 
-  //console.log("discarding =", discarding, "last use =", last_use_of_discardable)
-  if (discarding > 0)
-    result.splice(last_use_of_discardable, 0, op.DISCARD, discarding)
+  if (discarding === 0)
+    return result
+
+  let before_discard = result.slice(0, last_use_of_discardable)
+  let after_discard = result.slice(last_use_of_discardable)
+  result = before_discard.concat([op.DISCARD, discarding]).concat(after_discard)
   //console.log()
-  //console.log("expr =", expr, "result =", disassemble(result))
+  //console.log("expr =", expr, "result =", JSON.stringify(result), disassemble(result))
   return result
 }
 

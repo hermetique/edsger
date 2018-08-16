@@ -2111,7 +2111,8 @@ function compile_def(def, return_names=false, env=[]) {
     try {
       bind(name, bytes)
     } catch (e) {
-      throw ["In a definition of `" + name + "':", e]
+      throw ["In a definition of `" + name + "' with pattern "
+              + pattern2str(extract_pattern(arity)(compiled_case)[0]), e]
     }
     names.push(name)
   }

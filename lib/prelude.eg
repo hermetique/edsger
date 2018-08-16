@@ -113,9 +113,9 @@ a b cons c d cons = ≡ (b d =) (a c =) and
 
 # ordering
 
-a number b number < ≡ a b bytecode 20; cmp→bool where
-  -1 cmp→bool ≡ true
-  _ cmp→bool ≡ false
+a number b number < ≡ a b bytecode 20; λ -1 → true; _ → false
+
+a string b string < ≡ a b cmp λ -1 → true; _ → false
 
 a b > ≡ a b < not a b = not and
 

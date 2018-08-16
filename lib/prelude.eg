@@ -137,6 +137,9 @@ false false <> ≡ false
 nothing nothing <> ≡ nothing _ itself <> ≡ _ itself nothing <> ≡ nothing
 a itself b itself <> ≡ a b <> itself
 
+a left _ <> ≡ _ a left <> ≡ a left
+a right b right <> ≡ a b <> right
+
 a b pair c d pair <> ≡ (a c <>) (b d <>) pair
 
 nil a <> ≡ a nil <> ≡ a

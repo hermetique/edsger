@@ -74,19 +74,26 @@ Define tagged variant types with `data`.
 
 e.g. a boolean data type:
 ```haskell
-data true | false
+data bool == true | false
 ```
 
-The type doesn't really have an explicit name, but you can pattern match on the tags `true` and `false`:
+After this declaration, can pattern match on the tags `true` and `false`:
 ```haskell
 true show == "true"
 false show == "false"
 ```
 
+You can also tag pattern variables with the type name `bool`:
+```haskell
+a bool f == "got a bool"
+```
+
 Tags can also take arguments. e.g. an option type:
 ```haskell
-data _ itself | nothing
+data option ≡ _ itself | nothing
 ```
+You can also omit the type name (`option` in this case) if you don't want to be able to pattern match
+on it.
 
 If the underscores in a data declaration are replaced with an identifier `id`, that identifier
 can be used like a record field.
@@ -122,7 +129,7 @@ nil f map == nil
 t h cons f map == t f map h f . cons
 ```
 
-The primitive types `integer`, `number`, `string`, and `function` have corresponding unary tags,
+The primitive types `integer`, `number`, `string`, and `function` have corresponding type names,
 which let you match on them as well:
 ```haskell
 _ integer f == "got an integer"

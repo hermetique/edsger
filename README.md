@@ -77,20 +77,20 @@ e.g. a boolean data type:
 data bool == true | false
 ```
 
-After this declaration, can pattern match on the tags `true` and `false`:
+After this declaration, you can pattern match on the tags `true` and `false`:
 ```haskell
 true show == "true"
 false show == "false"
 ```
 
-You can also tag pattern variables with the type name `bool`:
+You can also tag pattern variables with the type name:
 ```haskell
-a bool f == "got a bool"
+a bool f == "got a bool" # only matches if a is true or false
 ```
 
 Tags can also take arguments. e.g. an option type:
 ```haskell
-data option ≡ _ itself | nothing
+data option == _ itself | nothing
 ```
 You can also omit the type name (`option` in this case) if you don't want to be able to pattern match
 on it.

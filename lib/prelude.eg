@@ -190,4 +190,4 @@ nil a cons _ intersperse ≡ nil a cons
 intercalate ≡ intersperse concat
 
 nil reverse ≡ nil
-a b cons reverse ≡ (nil b cons) a reverse ++
+a b cons reverse ≡ a reverse b lcons

@@ -166,9 +166,11 @@ function preprocess(s) {
         pop()
       else switch (token) {
         case "λ": case "\\": case "→": case "->":
-        case "data": case "import": case "do": case "with":
+        case "data": case "import": case "do": case "with": case "for":
         case "bytecode":
           stack.push([false, col + indent, false])
+          if (token === "for")
+            stack.push([false, col + indent + 100, false]) // for the pattern list
           break
         case "where":
           stack.push([false, last_indent(), false])
@@ -343,6 +345,8 @@ const term = one.guard(s => s !== terminator && s !== "where").bind(s => {
     return pure(s)
   else if (s[0] === "'")
     return pure(["var", s.substring(1)])
+  else if (s[0] === "`")
+    return pure(["as", s.substring(1)])
   else if (s[0] === "\"")
     return pure(["string", unescaped(s)])
   else if (!isNaN(s)) {
@@ -419,6 +423,23 @@ const definition = pattern_terminated_by(exact("==").or(exact("≡"))).some().bi
                    statement.bind(expr =>
                    pure(["def", pats, expr]))).label("definition")
 
+// for block
+const for_patterns = pattern_terminated_by(exact("|")).many().bind(init =>
+                     pattern_terminated_by(exact(terminator)).bind(last =>
+                     pure(init.concat([last]))))
+const for_block = exact("for").right(for_patterns).bind(pats =>
+                  definition.many().left(exact(terminator)).bind(defs =>
+                  pure(["for", pats, defs])))
+//console.log(JSON.stringify(for_patterns.parse(lex("_ _ cons | _ string _ string | _ function 'a;"))))
+//console.log(JSON.stringify(for_patterns.parse(lex("_ _ cons;"))))
+//let s = `for _ _ cons | _ string _ string | _ function 'a
+//  f ≡ g ≡ h
+//  j ≡ k ≡ l
+//`
+//console.log(preprocess(s))
+//console.log(JSON.stringify(for_block.parse(lex(preprocess(s)))))
+//process.exit()
+
 // imports
 const import_statement = exact("import").right(one.terminated_by(exact(terminator))).bind(imports =>
                          pure(["import"].concat(imports)))
@@ -437,7 +458,7 @@ const collapse = (parser, tokens, repl_mode=false) => {
 }
 
 // complete parser. [Token] -> [AST] or throw
-const parser = datadef.or(import_statement).or(definition).or(do_block).many()
+const parser = for_block.or(datadef).or(import_statement).or(definition).or(do_block).many()
 const parse = (tokens, repl_mode=false) =>
                 collapse(parser, tokens, repl_mode)
 
@@ -481,8 +502,9 @@ const op = {
   CASE_WILD: 5,   // | CASE_NUM[byte] string (same encoding as IMMNUM)
   CASE_TYPED: 6,  // | CASE_TAG32[byte] tag_id[int32] arity[byte] <arity sub-cases>
   CASE_TYPED32:7, // | CASE_WILD[byte]
-                  // | CASE_TYPED[byte] type_tag[byte] var_id[byte]
+  CASE_AS: 8,     // | CASE_TYPED[byte] type_tag[byte] var_id[byte]
                   // | CASE_TYPED32[byte] type_tag[int32] var_id[byte]
+                  // | CASE_AS[byte] var_id[byte] <sub-case>
                   // | tag_id[byte] arity[byte] <arity sub-cases> (for tags <= 255)
                   // var_id of 0 is a wild
                   // quoted_code is size[int32] <size bytes of code>
@@ -552,7 +574,7 @@ function bind_tags(typename, arr) {
     if (tag in word_map)
       throw ["Enum tag `" + tag + "' is already bound"]
   }
-  const already_bound = Object.keys(tags).length + 8 // VAR, INT, STR, NUM, TAG32, etc, are reserved
+  const already_bound = Object.keys(tags).length + 9 // VAR, INT, STR, NUM, TAG32, etc, are reserved
   let new_tags = []
   for (let i = 0; i < arr.length; ++i) {
     const entry = arr[i]
@@ -816,6 +838,11 @@ function extract_pattern(arity) {
         let id = get(extract_byte) + 1
         return [["var", id], i]
       }
+      case op.CASE_AS: {
+        let id = get(extract_byte) + 1
+        let pat = get(extract_subpattern)
+        return [["as", id, pat], i]
+      }
       case op.CASE_STR: {
         let str = get(extract_string)
         return [["string", str], i]
@@ -885,12 +912,16 @@ function extract_patterns(bytes) {
 
 // pretty-print a pattern
 function pattern2str(pattern) {
-  const var2str = a => a === 0 ? "_" : "'" + a
+  const var2str = (a, as=false) => a === 0 ? "_" : as ? "`" + a : "'" + a
 
   if (pattern.length === 0)
     return "()"
 
-  // variables match anything
+  // as pattern
+  if (pattern[0] === "as")
+    return pattern2str(pattern[2]) + " " + var2str(pattern[1], true)
+
+  // variables
   if (pattern[0] === "var")
     return var2str(pattern[1])
 
@@ -984,6 +1015,16 @@ function pattern_matches(pattern, item=undefined, accu={}) {
   // variables match anything
   if (pattern[0] === "var") { 
     accu[pattern[1]] = item; // accumulate bindings
+    return accu
+  }
+
+  // as pattern
+  if (pattern[0] === "as") { 
+    let submatch = pattern_matches(pattern[2], item)
+    if (submatch === null)
+      return null
+    pattern_matches(pattern[2], item, accu)
+    accu[pattern[1]] = item;
     return accu
   }
 
@@ -1260,6 +1301,10 @@ function check_exhaustive(patterns) {
       return new Row(tmps, satisfied)
     }
 
+    // as patterns unify exactly like the subpatterns they contain
+    if (pattern[0] === "as")
+      return unify(pattern[2], pair) // TODO swap indices to align with index of `id' in "typed" nodes
+
     // wildcard type satisfiable by variable
     if (pair instanceof Wild && pattern[0] === "var")
       return pair.satisfied()
@@ -1351,6 +1396,12 @@ function check_exhaustive(patterns) {
         result = result.map(a => new_inferences.map(b => a.concat([b]))).reduce((a, b) => a.concat(b), [])
       }
       return result.map(a => new Row(a))
+    }
+
+    // from as pattern, infer the same thing as the subpattern it contains
+    if (pattern[0] === "as") {
+      console.log("pattern[1] =", JSON.stringify(pattern[1]), "pattern =", JSON.stringify(pattern))
+      return infer_from(pattern[2]) // TODO switch indices to align with "typed" nodes
     }
 
     // from variable or wildcard, infer anything
@@ -1785,6 +1836,7 @@ function compile_datadef(datadef) {
 
 // get all bound variables in a pattern
 function extract_env(pattern) {
+  console.log("pattern =", JSON.stringify(pattern))
   if (!Array.isArray(pattern)) // tag or unescaped variable
     return (pattern in tags) || (pattern in typenames)
              ? []
@@ -1803,6 +1855,12 @@ function extract_env(pattern) {
   }
   if (head === "var")
     return [tail[0]]
+  if (head === "typed")
+    return [tail[1]]
+  if (head === "as") // TODO: make id index consistent with "typed" nodes (typed id at 1, as id at 0)
+    return [tail[0]]
+
+  //console.log("returning ", tail.map(extract_env).reduce(merge, []))
   return tail.map(extract_env).reduce(merge, [])
 }
 
@@ -1921,6 +1979,10 @@ function compile_pattern(pattern, env=[]) {
       let tail = pat.slice(1)
       switch (head) {
         case "wild": result.push([op.CASE_WILD]); break
+        case "as": {
+          let var_name = tail[0]
+          result.push([op.CASE_AS, encode_var_id(var_name, env), result.pop()])
+        } break
         case "var": {
           let var_name = tail[0]
           result.push([op.CASE_VAR, encode_var_id(var_name, env)])
@@ -2197,6 +2259,12 @@ function compile_import(ast, env=[]) {
   return []
 }
 
+function compile_for(ast, env=[]) {
+  let [_, patterns, definitions] = ast
+  //TODO implement after as-patterns
+  throw "`for' not supported"
+}
+
 function compile_ast_node(ast, env=[]) {
   if (!Array.isArray(ast))
     return compile_expr(["expr", ast], env)
@@ -2205,6 +2273,7 @@ function compile_ast_node(ast, env=[]) {
   switch (head) {
     case "data": return compile_datadef(ast, env)
     case "def": return compile_def(ast, false, env)
+    case "for": return compile_for(ast, env)
     case "import": return compile_import(ast, env)
     case "expr": return compile_expr(ast, env)
     case "integer": case "number": case "string": case "lambda": case "quote":

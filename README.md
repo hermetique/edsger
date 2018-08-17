@@ -84,7 +84,7 @@ false show == "false"
 ```
 
 You can also match on all values of some type by tagging pattern variables with the type name:
-```haskell
+```python
 a bool f == "got a bool" # only matches if a is true or false
 ```
 
@@ -266,7 +266,7 @@ for _ number _ number | _ string _ string
 (`cmp`, defined in [base](https://github.com/johnli0135/edsger/blob/master/lib/base.eg#L15),
 returns -1, 0, or 1 based on comparison result)
 
-The generated definitions are
+After desugaring:
 ```haskell
 _ number `a _ number `b = ≡ a b cmp λ 0 → true; _ → false
 _ string `a _ string `b = ≡ a b cmp λ 0 → true; _ → false

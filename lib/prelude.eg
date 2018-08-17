@@ -89,9 +89,8 @@ _ _ or ≡ true
 
 # equality
 
-a number b number = ≡ a b cmp λ 0 → true; _ → false
-
-a string b string = ≡ a b cmp λ 0 → true; _ → false
+for _ number _ number | _ string _ string
+  = ≡ cmp λ 0 → true; _ → false
 
 true true = ≡ false false = ≡ true
 true false = ≡ false true = ≡ false
@@ -135,9 +134,11 @@ a b cons f function filter ≡ a f filter b f . [b cons] when
 
 # semigroup
 
-a string b string <> ≡ a b ++
+for _ string _ string
+  <> ≡ ++
 
-a number b number <> ≡ a b +
+for _ number _ number
+  <> ≡ +
 
 a function b function <> ≡ [a . b .]
 

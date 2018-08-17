@@ -261,15 +261,15 @@ is generated for each pattern. For example, here is how number and string equali
 in [prelude](https://github.com/johnli0135/edsger/blob/master/lib/prelude.eg#L92):
 ```python
 for _ number _ number | _ string _ string
-  = == cmp λ 0 → true; _ → false
+  = == cmp λ 0 -> true; _ -> false
 ```
 (`cmp`, defined in [base](https://github.com/johnli0135/edsger/blob/master/lib/base.eg#L15),
 returns -1, 0, or 1 based on comparison result)
 
 After desugaring:
 ```haskell
-_ number `a _ number `b = == a b cmp λ 0 → true; _ → false
-_ string `a _ string `b = == a b cmp λ 0 → true; _ → false
+_ number `a _ number `b = == a b cmp λ 0 -> true; _ -> false
+_ string `a _ string `b = == a b cmp λ 0 -> true; _ -> false
 ```
 
 All patterns in the first line of the `for` block must match the same number of items on the stack

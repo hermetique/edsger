@@ -562,6 +562,7 @@ function make_tagged(tag, arity) {
            [stack2str(stack)]]
   push([tag, pop(arity)])
 }
+
 function bind_tags(typename, arr) {
   if (typename !== null) {
     if (typename in word_map)
@@ -573,9 +574,9 @@ function bind_tags(typename, arr) {
   for (const entry of arr) {
     let tag = entry[entry.length - 1]
     if (tag in typenames)
-      throw ["Enum tag `" + tag + "' is already bound as a type name"]
+      throw ["Variant tag `" + tag + "' is already bound as a type name"]
     if (tag in word_map)
-      throw ["Enum tag `" + tag + "' is already bound"]
+      throw ["Variant tag `" + tag + "' is already bound"]
   }
   const already_bound = Object.keys(tags).length + 9 // VAR, INT, STR, NUM, TAG32, etc, are reserved
   let new_tags = []
@@ -651,6 +652,7 @@ function bind_tags(typename, arr) {
   }
   families.push(new_tags)
 }
+
 function bind(name, bytes) {
   //console.log("binding =", name)
   const is_case = bytes => bytes.length > 0 && bytes[0] === op.CASE
@@ -680,25 +682,30 @@ function bind(name, bytes) {
     }
   }
 }
+
 function unbind_all(names) {
   for (const name of names)
     delete word_map[name]
 }
+
 function tag_bound(id) {
   return get_tag(id) !== null
 }
+
 function get_tag(id) {
   for (const t in tags)
     if (id === tags[t].id)
       return t
   return null
 }
+
 function get_typename(id) {
   for (const t in typenames)
     if (id === typenames[t])
       return t
   return null
 }
+
 function get_word_name(id) {
   for (const w in word_map)
     if (id === word_map[w])

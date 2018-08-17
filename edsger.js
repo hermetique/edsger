@@ -1685,16 +1685,16 @@ function partially_run_case(bytes, i) {
     patterns.push(pattern)
     let bytes = get(extract_values)
     let match = pattern_matches(pattern)
-    console.log()
-    if (action === null)
-      console.log("pattern =", pattern2str(pattern), "bytes =", disassemble(bytes), "match =", match,
-                  "stack =", JSON.stringify(stack))
+    //console.log()
+    //if (action === null)
+    //  console.log("pattern =", pattern2str(pattern), "bytes =", disassemble(bytes), "match =", match,
+    //              "stack =", JSON.stringify(stack))
     if (action === null && match !== null) {
-      console.log("before apttern transfer, symbosl =", JSON.stringify(symbols))
+      //console.log("before apttern transfer, symbosl =", JSON.stringify(symbols))
       pattern_transfer(match)
-      console.log("after apttern transfer, symbosl =", JSON.stringify(symbols))
+      //console.log("after apttern transfer, symbosl =", JSON.stringify(symbols))
       pop(pattern.length)
-      console.log("running action on stack =", JSON.stringify(stack), "symbols =", JSON.stringify(symbols))
+      //console.log("running action on stack =", JSON.stringify(stack), "symbols =", JSON.stringify(symbols))
       action = [bytes, Object.keys(match).length]
     }
   }
@@ -2623,9 +2623,9 @@ switch (process.argv[3]) {
 //  low cyc cyc
 //`)
 
-console.log(edsger `
-import prelude
-
-do
-  nil 1 cons 2 cons reverse
-`)
+//console.log(edsger `
+//import prelude
+//
+//do
+//  nil 1 cons 2 cons reverse
+//`)

@@ -202,8 +202,8 @@ bad == \ nil 3 cons itself -> 1
 
 ## `for` blocks
 
-Since function overloading relies on pattern matching, it can be hard to define functions tacitly,
-resulting in a lot of repeated code.
+Since function overloading relies on pattern matching, and the language isn't statically typed,
+it can be hard to define functions tacitly, resulting in a lot of repeated code.
 For example, the [latex](https://github.com/johnli0135/edsger/blob/master/lib/latex.eg) 
 module overloads the arithmetic operators `+` `-` `*` and `/` in order to handle arithmetic on `expr` objects,
 which represent LaTeX expressions. These overloaded function definitions essentially just pass the objects on

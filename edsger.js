@@ -2266,8 +2266,41 @@ function compile_import(ast, env=[]) {
   return []
 }
 
+// helper for `compile_for'. check that all patterns have same arity and do not contain any variables
+function compile_for_check_patterns(patterns) {
+  let arity = null
+  for (let i = 0; i < patterns.length; ++i) {
+    let pattern = patterns[i]
+    let pretty // store the prettified pattern if there's an error
+
+    let env = extract_env(pattern)
+    let [compiled, new_arity] = compile_pattern(pattern, env)
+    if (env.length > 0 || (arity !== null && new_arity !== arity)) {
+      pretty = pattern2str(extract_pattern(new_arity)(compiled)[0])
+    }
+
+    if (env.length > 0)
+      throw ["Pattern " + pretty + " is illegal.",
+             "Patterns in `for' block headers cannot contain variables."]
+
+    if (arity === null)
+      arity = new_arity
+    else if (new_arity !== arity) {
+      let [compiled, _] = compile_pattern(patterns[i - 1], env)
+      old_pretty = pattern2str(extract_pattern(arity)(compiled)[0])
+      throw ["Cases have mismatching numbers of arguments:",
+             "Previous pattern", [old_pretty], "has " + arity + ", but new pattern",
+             [pretty], "has " + new_arity]
+    }
+  }
+}
+
 function compile_for(ast, env=[]) {
   let [_, patterns, definitions] = ast
+
+  try { compile_for_check_patterns(patterns) }
+  catch (e) { throw ["In a `for' block:", e] }
+
   //TODO implement after as-patterns
   throw "`for' not supported"
 }

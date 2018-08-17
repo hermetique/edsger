@@ -142,8 +142,8 @@ for _ number _ number
 
 a function b function <> ≡ [a . b .]
 
-true true <> ≡ true false <> ≡ false true <> ≡ true
-false false <> ≡ false
+for _ bool _ bool
+  <> ≡ or
 
 nothing nothing <> ≡ nothing _ itself <> ≡ _ itself nothing <> ≡ nothing
 a itself b itself <> ≡ a b <> itself

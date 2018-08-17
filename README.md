@@ -206,7 +206,7 @@ Since function overloading relies on pattern matching, it can be hard to define 
 resulting in a lot of repeated code.
 For example, the [latex](https://github.com/johnli0135/edsger/blob/master/lib/latex.eg) 
 module overloads the arithmetic operators `+` `-` `*` and `/` in order to handle arithmetic on `expr` objects,
-which represent LaTex expressions. These overloaded function definitions essentially just pass the objects on
+which represent LaTeX expressions. These overloaded function definitions essentially just pass the objects on
 to a helper function, `binop`:
 ```haskell
 data _ _ expr
@@ -222,7 +222,7 @@ a b expr c d expr ge == a b expr c d expr "\\ge " 70 binop
 a b expr c d expr , == a b expr c d expr "," 70 binop
 ```
 
-This is really repetitive, but if we could eta-reduce each definition, writing things like
+This is really repetitive, but if we tried to eta-reduce each definition, writing things like
 ```haskell
 + == "+" 60 binop
 ```
@@ -244,7 +244,7 @@ for _ _ expr
 ```
 
 It desugars into normal function definitions with as-patterns:
-```python
+```haskell
 _ _ expr `a _ _ expr `b + == a b "+" 60 binop
 _ _ expr `a _ _ expr `b - == a b "-" 60 binop
 _ _ expr `a _ _ expr `b * == a b "\\cdot " 50 binop
@@ -255,6 +255,25 @@ _ _ expr `a _ _ expr `b le == a b "\\le " 70 binop
 _ _ expr `a _ _ expr `b ge == a b "\\ge " 70 binop
 _ _ expr `a _ _ expr `b , == a b "," 70 binop
 ```
+
+The header of the `for` block can also contain multiple patterns, in which case a definition
+is generated for each pattern. For example, here is how number and string equality are defined
+in [prelude](https://github.com/johnli0135/edsger/blob/master/lib/prelude.eg#L92):
+```python
+for _ number _ number | _ string _ string
+  = ≡ cmp λ 0 → true; _ → false
+```
+(`cmp`, defined in [base](https://github.com/johnli0135/edsger/blob/master/lib/base.eg#L15),
+returns -1, 0, or 1 based on comparison result)
+
+The generated definitions are
+```haskell
+_ number `a _ number `b = ≡ a b cmp λ 0 → true; _ → false
+_ string `a _ string `b = ≡ a b cmp λ 0 → true; _ → false
+```
+
+All patterns in the first line of the `for` block must match the same number of items on the stack
+and cannot contain any variables.
 
 ## Miscellaneous
 

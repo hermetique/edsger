@@ -13,10 +13,13 @@ leaf a k f dict-rec ≡ a
            false → k' k > λ true → (l a k f dict-rec) k' a' r node
                             false → l k' a' (r a k f dict-rec) node
 
-# insert
+# insert, adjust, update
 
 for _ dict
   k a , insert ≡ (leaf k a leaf node) k [a →node-value] dict-rec
+  k f function adjust ≡ leaf k [f ←node-value] dict-rec
+
+a update ≡ [a instead] adjust
 
 # find
 
@@ -25,13 +28,6 @@ leaf k find ≡ nothing
   k' k = λ true → a' itself
            false → k' k > λ true → l k find
                             false → r k find
-
-# adjust and update
-
-for _ dict
-  k f function adjust ≡ leaf k [f ←node-value] dict-rec
-
-a update ≡ [a instead] adjust
 
 # construct
 

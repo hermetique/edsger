@@ -737,7 +737,10 @@ function encode_string(s) {
 function encode_tagged_value(a) {
   let [tag, values] = a
   let encoded_values = values.map(encode_value).reduce((a, b) => a.concat(b), [])
-  return encoded_values.concat([op.MAKE, tag, values.length]) // TODO: breaks on tag id > 256
+  let maker = tag < 256
+                ? [op.MAKE, tag, values.length]
+                : [op.MAKE32].concat(encode_int32(tag)).concat([values.length])
+  return encoded_values.concat(maker)
 }
 
 function encode_value(a) {
@@ -862,7 +865,11 @@ function extract_pattern(arity) {
         let id = get(extract_byte)
         return [["typed", type, id], i]
       }
-      // TODO: TYPED32, TAG32
+      case op.CASE_TYPED32: {
+        let type = get(extract_int32)
+        let id = get(extract_byte)
+        return [["typed", type, id], i]
+      }
       case op.CASE_FUN: {
         get(extract_byte); // discard quote opcode
         let values = get(extract_values)
@@ -1303,7 +1310,7 @@ function check_exhaustive(patterns) {
 
     // as patterns unify exactly like the subpatterns they contain
     if (pattern[0] === "as")
-      return unify(pattern[2], pair) // TODO swap indices to align with index of `id' in "typed" nodes
+      return unify(pattern[2], pair)
 
     // wildcard type satisfiable by variable
     if (pair instanceof Wild && pattern[0] === "var")
@@ -1401,7 +1408,7 @@ function check_exhaustive(patterns) {
     // from as pattern, infer the same thing as the subpattern it contains
     if (pattern[0] === "as") {
       //console.log("pattern[1] =", JSON.stringify(pattern[1]), "pattern =", JSON.stringify(pattern))
-      return infer_from(pattern[2]) // TODO switch indices to align with "typed" nodes
+      return infer_from(pattern[2])
     }
 
     // from variable or wildcard, infer anything
@@ -1857,7 +1864,7 @@ function extract_env(pattern) {
     return [tail[0]]
   if (head === "typed")
     return [tail[1]]
-  if (head === "as") // TODO: make id index consistent with "typed" nodes (typed id at 1, as id at 0)
+  if (head === "as")
     return [tail[0]]
 
   //console.log("returning ", tail.map(extract_env).reduce(merge, []))

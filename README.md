@@ -150,6 +150,15 @@ data nil | tail head cons
 data head body tail creature
 ```
 
+Pattern variables prefixed by a backtick are interpreted as as-patterns:
+```haskell
+(a b cons) `c destruct-and-copy == a b c
+nil destruct-and-copy == nil nil nil
+
+do nil 1 cons destruct-and-copy
+# nil 1 (nil 1 cons)
+```
+
 ## Exhaustiveness and reachability
 
 All pattern matches must be exhaustive and reachable--the compiler automatically deduces the least general possible type that covers all the given patterns in a function definition or lambda expression and checks the patterns with respect to it.

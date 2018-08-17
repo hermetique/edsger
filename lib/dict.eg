@@ -8,8 +8,8 @@ data dict ≡ leaf | _ _ node-value _ node
 # f = function to apply when key is found
 
 leaf a k f dict-rec ≡ a
-(l k' a' r node) a k f dict-rec ≡
-  k' k = λ true → l k' a' r node f .
+(l k' a' r node) `d a k f dict-rec ≡
+  k' k = λ true → d f .
            false → k' k > λ true → (l a k f dict-rec) k' a' r node
                             false → l k' a' (r a k f dict-rec) node
 

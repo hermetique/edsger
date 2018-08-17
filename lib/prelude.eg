@@ -82,10 +82,10 @@ false not ≡ true
 true not ≡ false
 
 true true and ≡ true
-_ _ and ≡ false
+_ bool _ bool and ≡ false
 
 false false or ≡ false
-_ _ or ≡ true
+_ bool _ bool or ≡ true
 
 # equality
 

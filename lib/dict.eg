@@ -18,7 +18,7 @@ leaf a k f dict-rec ≡ a
 k a dict-insert ≡ (leaf k a leaf node) k [a →node-value] dict-rec
 
 leaf k a , insert ≡ leaf k a dict-insert
-(l k' a' r node) k a , insert ≡ (l k' a' r node) k a dict-insert
+(_ _ _ _ node) `d k a , insert ≡ d k a dict-insert
 
 # find
 
@@ -33,7 +33,7 @@ leaf k find ≡ nothing
 k f function dict-adjust ≡ leaf k [f ←node-value] dict-rec
 
 leaf k f function adjust ≡ leaf k f dict-adjust
-(l k' a r node) k f function adjust ≡ (l k' a r node) k f dict-adjust
+(_ _ _ _ node) `d k f function adjust ≡ d k f dict-adjust
 
 a update ≡ [a instead] adjust
 

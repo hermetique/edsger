@@ -1400,7 +1400,7 @@ function check_exhaustive(patterns) {
 
     // from as pattern, infer the same thing as the subpattern it contains
     if (pattern[0] === "as") {
-      console.log("pattern[1] =", JSON.stringify(pattern[1]), "pattern =", JSON.stringify(pattern))
+      //console.log("pattern[1] =", JSON.stringify(pattern[1]), "pattern =", JSON.stringify(pattern))
       return infer_from(pattern[2]) // TODO switch indices to align with "typed" nodes
     }
 
@@ -1836,7 +1836,7 @@ function compile_datadef(datadef) {
 
 // get all bound variables in a pattern
 function extract_env(pattern) {
-  console.log("pattern =", JSON.stringify(pattern))
+  //console.log("pattern =", JSON.stringify(pattern))
   if (!Array.isArray(pattern)) // tag or unescaped variable
     return (pattern in tags) || (pattern in typenames)
              ? []

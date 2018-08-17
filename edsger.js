@@ -1908,10 +1908,9 @@ function extract_free(expr, env=[]) {
 }
 
 // check that all currently defined words are exhaustive
-function check_exhaustive_words() {
-  for (const word in word_map) {
+function check_exhaustive_words(to_check=Object.keys(word_map)) {
+  for (const word of to_check) {
     try {
-      //console.log("word =", word)
       check_exhaustive(extract_patterns(words[word_map[word]]))
     } catch (e) {
       if (word in partial_words) {
@@ -2267,6 +2266,10 @@ function compile_where(ast, env=[]) {
   //console.log("compiled all the defs. compiling expr =", expr)
   let result = compile_expr(expr, env)
   //console.log("unbinding ", names)
+
+  try { check_exhaustive_words(names) }
+  catch (e) { throw ["In a `where' clause:", e] }
+
   unbind_all(names)
   return result
 }

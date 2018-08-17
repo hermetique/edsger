@@ -18,6 +18,7 @@ n integer base ind function nat-rec ≡ (n 1 -) base ind nat-rec n ind .
 
 # data types
 
+data ordering ≡ LT | EQ | GT
 data bool ≡ true | false
 data pair ≡ fst snd ,
 data option ≡ nothing | from-itself itself
@@ -112,9 +113,10 @@ a b cons c d cons = ≡ (b d =) (a c =) and
 
 # ordering
 
-a number b number < ≡ a b bytecode 20; λ -1 → true; _ → false
+compare ≡ cmp λ -1 → LT; 0 → EQ; 1 → GT; _ → "cmp failed" fail
 
-a string b string < ≡ a b cmp λ -1 → true; _ → false
+for _ number _ number | _ string _ string
+  < ≡ compare λ LT → true; _ → false
 
 a b > ≡ a b < not a b = not and
 

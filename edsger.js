@@ -565,7 +565,7 @@ function bind_tags(typename, arr) {
       throw ["Type name `" + typename + "' is already bound as a function"]
     if (typename in typenames)
       throw ["Type name `" + typename + "' is already bound"]
-    typenames[typename] = Object.keys(typenames).length
+    typenames[typename] = Object.keys(families).length
   }
   for (const entry of arr) {
     let tag = entry[entry.length - 1]
@@ -1106,6 +1106,7 @@ function pattern_matches(pattern, item=undefined, accu={}) {
         if (!Array.isArray(item) || item[0] === op.CASE_FUN)
           return null
         let family = families[type]
+        //console.log("family =", family, "type =", type, "typenames =", typenames, "families =", families)
         for (const t of family) {
           if (t in tags && tags[t].id === item[0]) {
             if (id !== 0)

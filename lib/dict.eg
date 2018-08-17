@@ -1,6 +1,6 @@
 import prelude
 
-data leaf | _ _ node-value _ node
+data dict ≡ leaf | _ _ node-value _ node
 
 # combinator for traversing dictionaries
 # a = value to return at leaf nodes (key not found)
@@ -15,10 +15,8 @@ leaf a k f dict-rec ≡ a
 
 # insert
 
-k a dict-insert ≡ (leaf k a leaf node) k [a →node-value] dict-rec
-
-leaf k a , insert ≡ leaf k a dict-insert
-(_ _ _ _ node) `d k a , insert ≡ d k a dict-insert
+for _ dict
+  k a , insert ≡ (leaf k a leaf node) k [a →node-value] dict-rec
 
 # find
 
@@ -30,10 +28,8 @@ leaf k find ≡ nothing
 
 # adjust and update
 
-k f function dict-adjust ≡ leaf k [f ←node-value] dict-rec
-
-leaf k f function adjust ≡ leaf k f dict-adjust
-(_ _ _ _ node) `d k f function adjust ≡ d k f dict-adjust
+for _ dict
+  k f function adjust ≡ leaf k [f ←node-value] dict-rec
 
 a update ≡ [a instead] adjust
 

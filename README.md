@@ -231,7 +231,7 @@ of `+` would be considered an unreachable pattern.
 
 A `for` block factors out these repetitions while leaving the function open for additional overloads:
 ```python
-for _ _ expr
+for _ _ expr _ _ expr
   + == "+" 60 binop
   - == "-" 60 binop
   * == "\\cdot " 50 binop

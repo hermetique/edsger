@@ -259,7 +259,7 @@ _ _ expr `a _ _ expr `b , == a b "," 70 binop
 The header of the `for` block can also contain multiple patterns, in which case a definition
 is generated for each pattern. For example, here is how number and string equality are defined
 in [prelude](https://github.com/johnli0135/edsger/blob/master/lib/prelude.eg#L92):
-```python
+```haskell
 for _ number _ number | _ string _ string
   = == cmp λ 0 -> true; _ -> false
 ```

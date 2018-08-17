@@ -6,7 +6,6 @@ tri ≡ 0 [+] nat-rec
 
 # fibonacci numbers
 n fib ≡ 1 1 n fib' instead where
-  _ a instead ≡ a
   a b 0 fib' ≡ a b
   a b n fib' ≡ (a b +) a (n 1 -) fib'
 

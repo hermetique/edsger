@@ -474,6 +474,9 @@ const parse = (tokens, repl_mode=false) =>
 
 // -------------------- bytecode vm: global state + operations --------------------
 
+// some configuration flags
+let logging = false
+
 // intrinsics
 const op = {
   OVERFLOW: 0,    // for opcodes > 255
@@ -1574,9 +1577,9 @@ function disassemble(bytes, indent_by=0) {
     let n, values
     switch (b) {
       case op.FAIL: put("fail"); brk(); break
-      case op.IMMSTR: put("str "); put(JSON.stringify(get(extract_string))); brk(); break
-      case op.IMMINT: put("int "); go(extract_int32); brk(); break
-      case op.IMMNUM: put("float "); go(extract_double); brk(); break
+      case op.IMMSTR: put("string "); put(JSON.stringify(get(extract_string))); brk(); break
+      case op.IMMINT: put("integer "); go(extract_int32); brk(); break
+      case op.IMMNUM: put("number "); go(extract_double); brk(); break
       case op.CLOSURE: {
         put("closure ")
         const n_vars = get(extract_byte)
@@ -1718,18 +1721,25 @@ function partially_run_case(bytes, i) {
 // evaluate bytecode
 function run(bytes) {
   let i
+  let currently_running = null
   const get = f => {
     let value
     [value, i] = f(bytes, i)
     return value
   }
-  const rec = (new_bytes, word=null) => { // tail call opt
+  const rec = (new_bytes, word=currently_running) => { // tail call opt
     //console.log("stack =", stack2str(stack))
     //console.log("symbols =", symbols)
     //console.log("new bytes =", disassemble(new_bytes))
+
+    if (logging && word !== null) {
+      console.log("# " + get_word_name(word))
+    }
+
     if (i === bytes.length - 1) {
       i = -1
       bytes = new_bytes
+      currently_running = word
     } else {
       try {
         run(new_bytes)
@@ -1742,51 +1752,59 @@ function run(bytes) {
     }
   }
   const go = f => push(get(f))
-  for (i = 0; i < bytes.length; ++i) {
-    let b
-    [b, i] = extract_instr(bytes, i)
+  try {
+    for (i = 0; i < bytes.length; ++i) {
+      let b
+      [b, i] = extract_instr(bytes, i)
 
-    const num = () => parseFloat(pop()[0])
-    const item = () => pop()[0]
-    switch (b) {
-      case op.FAIL: throw [pop()]; break
-      case op.IMMSTR: go(extract_string); break
-      case op.IMMINT: go(extract_int32); break
-      case op.IMMNUM: go(extract_double); break
-      case op.CLOSURE: {
-        let header = encode_closure(get(extract_byte_values))
-        let code = get(extract_values)
-        push([op.CASE_FUN, header.concat(encode_int32(code.length)).concat(code)]);
-      } break
-      case op.QUOTE: { let code = get(extract_values); push([op.CASE_FUN, code]) } break
-      case op.APP: rec(item()[1]); break
-      case op.TRANSFER: { let n = get(extract_byte); transfer(n) } break
-      case op.LOAD: { let n = get(extract_byte); load(n) } break
-      case op.DISCARD: { let n = get(extract_byte); discard(n) } break
-      case op.DUP: dup(); break
-      case op.SWAP: swap(); break
-      case op.CASE: { let [code, n] = get(partially_run_case); rec(code) } break
-                   // console.log("running ", disassemble(code), "stack =", JSON.stringify(stack));
-                   // run(code)
-                   // console.log("afterwards, stack =", JSON.stringify(stack)) } break
-      case op.MAKE: { let n = get(extract_byte); let m = get(extract_byte); make_tagged(n, m) } break
-      case op.MAKE32: { let n = get(extract_int32); let m = get(extract_byte); make_tagged(n, m) } break
-      case op.ADD: push(num() + num()); break
-      case op.MUL: push(num() * num()); break
-      case op.SUB: { let a = num(); let b = num(); push(b - a) } break
-      case op.DIV: { let a = num(); let b = num(); push(b / a) } break
-      case op.CMP: { let a = num(); let b = num(); push(b === a ? 0 : b < a ? -1 : 1) } break
-      case op.STR_CAT: { let a = item(); let b = item(); push(b + a) } break
-      case op.STR_CMP: { let a = item(); let b = item(); push(b === a ? 0 : b < a ? -1 : 1) } break
-      case op.STR_INIT: push((a => a.substring(0, a.length - 1))(item())); break
-      case op.STR_LAST: push((a => a.substring(a.length - 1))(item())); break
-      case op.STR_STR: { let b = num(); let a = num(); let s = item(); push(s.substring(b, a)) } break
-      default:
-        if (!(b in words))
-          throw ["Unknown bytecode instruction " + b]
-        rec(words[b], b)
-        break
+      if (logging) {
+        console.log("#   " + stack2str(stack))
+      }
+
+      const num = () => parseFloat(pop()[0])
+      const item = () => pop()[0]
+      switch (b) {
+        case op.FAIL: throw [pop()]; break
+        case op.IMMSTR: go(extract_string); break
+        case op.IMMINT: go(extract_int32); break
+        case op.IMMNUM: go(extract_double); break
+        case op.CLOSURE: {
+          let header = encode_closure(get(extract_byte_values))
+          let code = get(extract_values)
+          push([op.CASE_FUN, header.concat(encode_int32(code.length)).concat(code)]);
+        } break
+        case op.QUOTE: { let code = get(extract_values); push([op.CASE_FUN, code]) } break
+        case op.APP: rec(item()[1]); break
+        case op.TRANSFER: { let n = get(extract_byte); transfer(n) } break
+        case op.LOAD: { let n = get(extract_byte); load(n) } break
+        case op.DISCARD: { let n = get(extract_byte); discard(n) } break
+        case op.DUP: dup(); break
+        case op.SWAP: swap(); break
+        case op.CASE: { let [code, n] = get(partially_run_case); rec(code) } break
+        case op.MAKE: { let n = get(extract_byte); let m = get(extract_byte); make_tagged(n, m) } break
+        case op.MAKE32: { let n = get(extract_int32); let m = get(extract_byte); make_tagged(n, m) } break
+        case op.ADD: push(num() + num()); break
+        case op.MUL: push(num() * num()); break
+        case op.SUB: { let a = num(); let b = num(); push(b - a) } break
+        case op.DIV: { let a = num(); let b = num(); push(b / a) } break
+        case op.CMP: { let a = num(); let b = num(); push(b === a ? 0 : b < a ? -1 : 1) } break
+        case op.STR_CAT: { let a = item(); let b = item(); push(b + a) } break
+        case op.STR_CMP: { let a = item(); let b = item(); push(b === a ? 0 : b < a ? -1 : 1) } break
+        case op.STR_INIT: push((a => a.substring(0, a.length - 1))(item())); break
+        case op.STR_LAST: push((a => a.substring(a.length - 1))(item())); break
+        case op.STR_STR: { let b = num(); let a = num(); let s = item(); push(s.substring(b, a)) } break
+        default:
+          if (!(b in words))
+            throw ["Unknown bytecode instruction " + b]
+          rec(words[b], b)
+          break
+      }
     }
+  } catch (e) {
+    if (currently_running === null)
+      throw e
+    let name = get_word_name(currently_running)
+    throw name === null ? e : ["In `" + name + "':", e]
   }
 }
 
@@ -2562,12 +2580,70 @@ function repl() {
   let strings = []
   process.stdin.on("data", s => {
     s = s.replace(/\s*$/, "")
+
+    // skip empty input
     if (s.length === 0)
       return
+
+    // directives
+    if (s[0] === "#" && s.length > 1 && s[1] !== " ") {
+      let tokens = s.substring(1).split(" ")
+      let directive = tokens[0]
+      let argv = tokens.slice(1)
+      switch (directive) {
+        case "set": {
+          if (argv.length < 1) {
+            console.log("# Usage: `set <flag> | set no<flag>'\n")
+            return
+          }
+          let flag = argv[0]
+          switch (flag) {
+            case "nolog": logging = false; console.log("# Logging disabled.\n"); return
+            case "log": logging = true; console.log("# Logging enabled.\n"); return
+            default: console.log("# `" + flag + "' is not a valid flag\n"); return
+          }
+        } break
+        case "dis!": {
+          if (argv.length < 1) {
+            console.log("# Usage: `dis! <function id>'\n")
+            return
+          }
+          let is_nat = argv[0].replace(/[0-9]+/g, "").length === 0
+          let word = parseInt(argv[0])
+          if (!is_nat || word >= words.length) {
+            console.log("# " + (!is_nat ? "`" + argv[0] + "'" : word) + " is not a valid function id\n")
+            return
+          }
+          let disassembled = disassemble(words[word])
+          console.log(disassembled.split("\n").map(a => "# " + a + "\n").join(""))
+          return
+        }
+        case "dis": {
+          if (argv.length < 1) {
+            console.log("# Usage: `dis <function name>'\n")
+            return
+          }
+          let word = argv[0]
+          if (!(word in word_map)) {
+            console.log("# `" + word + "' is unbound\n")
+            return
+          }
+          let disassembled = disassemble(words[word_map[word]])
+          console.log(disassembled.split("\n").map(a => "# " + a + "\n").join(""))
+          return
+        }
+        default:
+          console.log("# Unknown directive `" + directive + "'\n")
+          return
+      }
+    }
+
+    // multi-line input
     if (s[s.length - 1] === "#") {
       strings.push(s.substring(0, s.length - 1))
       return
     }
+
     try {
       let code = strings.map(a => a + "\n").join("") + s
       strings = []

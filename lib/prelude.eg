@@ -161,15 +161,8 @@ data mempty
 
 mempty a ++ ≡ a mempty ++ ≡ a
 
-a number b number ++ ≡ a b <>
-
-a function b function ++ ≡ a b <>
-
-a bool b bool ++ ≡ a b <>
-
-a pair b pair ++ ≡ a b <>
-
-a list b list ++ ≡ a b <>
+for _ number _ number | _ function _ function | _ bool _ bool | _ pair _ pair | _ list _ list
+  ++ ≡ <>
 
 # folds/foldable
 

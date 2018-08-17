@@ -1937,6 +1937,19 @@ function check_exhaustive_words() {
 
 // -------------------- compiler --------------------
 
+// return n fresh identifiers not contained in env
+function generate_fresh(n, env=[]) {
+  let k = 0
+  let result = []
+  for (let i = 0; i < n; ++i) {
+    while (env.indexOf("a" + k) !== -1)
+      ++k
+    result.push("a" + k)
+    ++k
+  }
+  return result
+}
+
 function compile_pattern(pattern, env=[]) {
   let result = []
 
@@ -2293,16 +2306,119 @@ function compile_for_check_patterns(patterns) {
              [pretty], "has " + new_arity]
     }
   }
+
+  return arity
+}
+
+// enhance a pattern by associating with each item an as-variable
+// variable names are chosen not to conflict with anything in env
+// assumes patterns have already been compiled once (in compile_for)
+// so does not check arity
+//
+// return enhanced pattern + ast node to load the as-variables
+function compile_for_augment_pattern(pattern, env) {
+  class Wrap { constructor(arr) { this.arr = arr } }
+
+  let result = []
+
+  for (const pat of pattern.slice(1)) { // slice off "pattern" at root
+    // is a tag
+    if (!Array.isArray(pat)) {
+      const tag = pat
+      if (tag in typenames) // typenames
+        result.push([result.pop(), tag])
+      else if (!(tag in tags)) // treat as unescaped variable
+        result.push(pat)
+      // tag
+      else {
+        let { arity } = tags[tag]
+        let args = arity === 0 ? [] : result.splice(-arity)
+        result.push(args.concat([tag]))
+      }
+    }
+    // variable/literal
+    else {
+      let head = pat[0]
+      let tail = pat.slice(1)
+      switch (head) {
+        case "wild": result.push(new Wrap(pat)); break
+        case "as": result.push([result.pop(), new Wrap(pat)]); break
+        case "var": case "integer": case "number": case "string": case "quote":
+          result.push(new Wrap(pat))
+          break
+      }
+    }
+  }
+
+  // associate each item with an as-variable + code to load them
+  const asify = a => {
+    let result = []
+    let fresh = generate_fresh(a.length, env)
+    for (let i = 0; i < a.length; ++i)
+      result = result.concat([a[i], new Wrap(["as", fresh[i]])])
+    return [result, ["expr"].concat(fresh.map(a => ["var", a]))]
+  }
+
+  // smush a tree into a flat array
+  const flatten = a => {
+    let result = []
+    for (const b of a)
+      if (!Array.isArray(b))
+        result.push(b)
+      else
+        result = result.concat(flatten(b))
+    return result
+  }
+
+  // remove all Wraps from a flattened array
+  const unwrap = a => a.map(b => b instanceof Wrap ? b.arr : b)
+
+  let ast 
+  [result, ast] = asify(result)
+  result = ["pattern"].concat(unwrap(flatten(result)))
+
+  //console.log("result =", result)
+
+  return [result, ast]
 }
 
 function compile_for(ast, env=[]) {
   let [_, patterns, definitions] = ast
 
-  try { compile_for_check_patterns(patterns) }
+  //console.log("patterns =", patterns.map(JSON.stringify))
+
+  try { arity = compile_for_check_patterns(patterns) }
   catch (e) { throw ["In a `for' block:", e] }
 
-  //TODO implement after as-patterns
-  throw "`for' not supported"
+  let def_env = definitions.bind(def => def[1].bind(pat => extract_env(pat.slice(0, -1))))
+  //console.log("env =", def_env)
+
+  // take two asts of the form [type ...a] and [type ...b] and form [type ...a ...b]
+  const merge = (a, b) => a.concat(b.slice(1))
+
+  let augmented_patterns = []
+  let augmented_definitions = []
+  for (const pattern of patterns) {
+    let [pat, pat_expr] = compile_for_augment_pattern(pattern, def_env)
+    augmented_patterns.push(pat)
+    for (const definition of definitions) {
+      let [header, pats, expr] = definition
+      let new_pats = pats.map(a => merge(pat, a))
+      let new_expr = merge(pat_expr, expr)
+      augmented_definitions.push([header, new_pats, new_expr])
+    }
+  }
+
+  //console.log("definitions =", augmented_definitions.map(JSON.stringify))
+  for (const definition of augmented_definitions) {
+    try {
+      compile_def(definition)
+    } catch (e) {
+      throw ["In a `for' block:", e]
+    }
+  }
+
+  return []
 }
 
 function compile_ast_node(ast, env=[]) {
@@ -2405,7 +2521,7 @@ function debug_interpret(s) {
   console.log(JSON.stringify(parse(lex(preprocess(s)))))
   console.log("---------- bytecode ----------")
   console.log(JSON.stringify(compile(parse(lex(preprocess(s))))))
-  //process.exit()
+  process.exit()
   let bytecode = interpret(s)
   console.log(JSON.stringify(bytecode))
   console.log("---------- result ----------")

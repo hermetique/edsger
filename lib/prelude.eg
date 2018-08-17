@@ -189,5 +189,9 @@ nil a cons _ intersperse ≡ nil a cons
 
 intercalate ≡ intersperse concat
 
-nil reverse ≡ nil
-a b cons reverse ≡ a reverse b lcons
+a list unpack ≡ a go a length where
+  nil go ≡ 
+  a b cons go ≡ a go b
+
+for _ list
+  reverse ≡ unpack λ len → nil [swap cons] len rep where

@@ -1740,7 +1740,8 @@ function run(bytes) {
     //console.log("new bytes =", disassemble(new_bytes))
 
     if (logging && word !== null) {
-      console.log("# " + get_word_name(word))
+      let name = get_word_name(word)
+      console.log("# " + (name === null ? word : name))
     }
 
     if (i === bytes.length - 1) {

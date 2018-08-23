@@ -1,16 +1,16 @@
 import dict
 
-data _ set deriving show | = | compare
+data set ≡ _ make-set deriving show | = | compare
 
 # insert
 
-d set k insert ≡ d k nothing , insert set
+d make-set k insert ≡ d k nothing , insert make-set
 
 # find
 
-d set k elem ≡ d k find λ nothing → false; _ itself → true
+d make-set k elem ≡ d k find λ nothing → false; _ itself → true
 
 # constructors
 
-nil →set ≡ leaf set
+nil →set ≡ leaf make-set
 (a b cons) →set ≡ a →set b insert

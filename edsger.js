@@ -1955,26 +1955,9 @@ function compile_datadef(datadef) {
                        .concat([name])
 
     let code = ["lambda", ["case", pattern, expr]]
-    console.log("args =", args, "pattenr =", pattern, "expr =", expr, "code =", code)
+    //console.log("args =", args, "pattenr =", pattern, "expr =", expr, "code =", code)
     bind(name, compile_lambda(code))
   }
-
-  //  let code = ["lambda",
-  //               ["case",
-  //                 ["pattern"].concat(
-  //body = [["var", "a"], ["var", "b"], ["bytecode", op.APP], 
-  //        ["lambda",
-  //          ["case",
-  //            ["pattern", ["var", "c"]],
-  //            ["expr"]
-  //              .concat(upto(j))
-  //              .concat([["var", "c"]])
-  //              .concat(upto(accessors.length, j + 1))
-  //              .concat([tag])]]]
-  //code = ["lambda",
-  //         ["case",
-  //           ["pattern"].concat(pattern).concat([tag]).concat([["var", "b"]]),
-  //             ["expr"].concat(body)]]
 
   return []
 }

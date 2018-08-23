@@ -1,6 +1,6 @@
 import prelude
 
-data dict ≡ leaf | _ _ node-value _ node
+data dict ≡ leaf | _ _ node-value _ node deriving show | = | compare
 
 # combinator for traversing dictionaries
 # a = value to return at leaf nodes (key not found)

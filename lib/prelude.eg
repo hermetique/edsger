@@ -18,62 +18,10 @@ n integer base ind function nat-rec ≡ (n 1 -) base ind nat-rec n ind .
 
 a b f function to-both ≡ (a f .) (b f .)
 
-# data types
+# primitive data types
 
 data list ≡ nil | init last cons
-data ordering ≡ LT | EQ | GT
-data bool ≡ true | false
-data pair ≡ fst snd ,
-data labelled ≡ _ _ :
-data option ≡ nothing | from-itself itself
-data either ≡ from-left left | from-right right
-
-# to and from primitive (autogeneratd once deriving works)
-
-nil "true" : primitive→ ≡ true
-nil "false" : primitive→ ≡ false
-
-nil "nothing" : primitive→ ≡ nothing
-nil a cons "itself" : primitive→ ≡ a itself
-
-nil a cons "left" : primitive→ ≡ a left
-nil a cons "right" : primitive→ ≡ a right
-
-nil a cons b cons "," : primitive→ ≡ a b ,
-
-true →primitive ≡ nil "true" :
-false →primitive ≡ nil "false" :
-
-nothing →primitive ≡ nil "nothing" :
-a itself →primitive ≡ nil a cons "itself" :
-
-a left →primitive ≡ nil a cons "left" :
-a right →primitive ≡ nil a cons "right" :
-
-a b , →primitive ≡ nil a cons b cons "," :
-
-# pretty printer, literal values
-
-a integer show ≡ a number show ≡ a "" bytecode 21
-a string show ≡ a
-
-# pretty printer, derived implementations
-
-nil show ≡ "nil"
-a b : show ≡ "(" a show ++ " " ++ b ++ ")" ++
-a b cons show ≡ a show " " ++ b show ++
-
-for _ bool | _ option | _ either | _ pair
-  show ≡ →primitive show
-
-# map, derived implementations
-
-nil _ function map ≡ nil
-a b cons f function map ≡ a f map (b f .) cons
-a b : f function map ≡ a f map b : primitive→
-
-for _ option | _ either | _ pair
-  f function map ≡ →primitive f map
+data tagged-union ≡ _ _ :
 
 # list operations
 
@@ -95,7 +43,43 @@ a string →list ≡ (a init →list) (a last) cons
 nil →string ≡ ""
 (a b string cons) →string ≡ a →string b ++
 
-# predicates
+# pretty printer (show)
+
+a integer show ≡ a number show ≡ a "" bytecode 21
+a string show ≡ a
+
+a b : show ≡ "(" a show ++ " " ++ b ++ ")" ++
+nil show ≡ "nil"
+a b cons show ≡ a show " " ++ b show ++
+
+# ordering (compare)
+
+data ordering ≡ LT | EQ | GT deriving show
+
+for _ number _ number | _ string _ string
+  compare ≡ cmp λ -1 → LT
+                   0 → EQ
+                   1 → GT
+                   _ → "impossible: cmp failed" fail
+
+a b string : c d string : compare ≡ b d compare λ EQ → a c compare; a → a
+
+nil nil compare ≡ EQ
+nil (_ _ cons) compare ≡ LT
+(_ _ cons) nil compare ≡ GT
+(a b cons) (c d cons) compare ≡ b d compare λ EQ → a c compare; a → a
+
+(a ordering) (b ordering) compare ≡ a →primitive b →primitive compare
+
+# map
+
+nil _ function map ≡ nil
+a b cons f function map ≡ a f map (b f .) cons
+a b : f function map ≡ a f map b : primitive→
+
+# predicates and conditionals
+
+data bool ≡ true | false deriving show | compare
 
 false not ≡ true
 true not ≡ false
@@ -106,8 +90,6 @@ _ bool _ bool and ≡ false
 false false or ≡ false
 _ bool _ bool or ≡ true
 
-# conditionals
-
 true b function c function ite ≡ b .
 false b function c function ite ≡ c .
 
@@ -115,39 +97,25 @@ a b function when ≡ a b [] ite
 
 a b function unless ≡ a [] b ite
 
-# equality, literals
+for _ _
+  < ≡ compare λ LT → true; _ → false
+  > ≡ compare λ GT → true; _ → false
 
-for _ number _ number | _ string _ string
-  = ≡ cmp λ 0 → true; _ → false
+# equality (=)
 
-# equality, derived implementations
-
-a b : c d : = ≡ b d = [a c =] [false] ite
-nil nil = ≡ true
-nil _ _ cons = ≡ _ _ cons nil = ≡ false
-a b cons c d cons = ≡ b d = [a c =] [false] ite
-
-for _ bool _ bool | _ option _ option | _ either _ either | _ pair _ pair
-  = ≡ [→primitive] to-both =
+for _ number _ number | _ string _ string | _ list _ list | _ tagged-union _ tagged-union
+  = ≡ compare λ EQ → true; _ → false
 
 for _ _
   /= ≡ = not
 
-# ordering
+# basic data types
 
-compare ≡ cmp λ -1 → LT; 0 → EQ; 1 → GT; _ → "cmp failed" fail
+data pair ≡ fst snd , deriving show | compare | = | f map
+data option ≡ nothing | from-itself itself deriving show | compare | = | f map
+data either ≡ from-left left | from-right right deriving show | compare | = | f map
 
-for _ number _ number | _ string _ string
-  < ≡ compare λ LT → true; _ → false
-
-a b > ≡ a b < not a b = not and
-
-# filter
-
-nil f function filter ≡ nil
-a b cons f function filter ≡ a f filter b f . [b cons] when
-
-# semigroup, literals
+# semigroup
 
 for _ string _ string
   <> ≡ ++
@@ -207,6 +175,9 @@ intercalate ≡ intersperse concat
 a list unpack ≡ (a go) (a length) where
   nil go ≡ 
   a b cons go ≡ a go b
+
+nil f function filter ≡ nil
+a b cons f function filter ≡ a f filter b f . [b cons] when
 
 for _ list
   reverse ≡ unpack λ len → nil [swap cons] len rep where

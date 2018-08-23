@@ -1,6 +1,6 @@
 import dict
 
-data _ set
+data _ set deriving show | = | compare
 
 # insert
 

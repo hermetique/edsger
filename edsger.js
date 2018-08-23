@@ -1,4 +1,5 @@
 Array.prototype.bind = function(f) { return this.map(f).reduce((a, b) => a.concat(b), []) }
+Array.prototype.unzip = function() { return [this.map(a => a[0]), this.map(a => a[1])] }
 
 // -------------------- lexer --------------------
 
@@ -166,7 +167,7 @@ function preprocess(s) {
         pop()
       else switch (token) {
         case "λ": case "\\": case "→": case "->":
-        case "data": case "import": case "do": case "with": case "for":
+        case "data": case "import": case "do": case "with": case "for": case "deriving":
         case "bytecode":
           stack.push([false, col + indent, false])
           if (token === "for")
@@ -366,11 +367,25 @@ const exact = token => one.guard(t => t === token).label(token)
 
 // "data" definitions
 const datadef_typename = one.left(exact("==").or(exact("≡"))).maybe()
-const datadef_entry = one.guard(t => t !== terminator && t !== "|").many().label("data entry")
+const datadef_entry = one.guard(t => t !== terminator && t !== "|" && t !== "deriving").many().label("data entry")
+const deriving_entry = datadef_entry
+const datadef_deriving = exact("deriving").right(deriving_entry.separated_by(exact("|")).left(
+                         exact(terminator))).bind(entries =>
+                         pure(["deriving"].concat(entries))).maybe()
 const datadef = exact("data").right(datadef_typename).bind(m_typename =>
-                datadef_entry.separated_by(exact("|")).left(exact(terminator)).bind(entries =>
+                datadef_entry.separated_by(exact("|")).bind(entries =>
+                datadef_deriving.or(exact(terminator).right(pure(null))).bind(m_deriving =>
                 (m_typename === null ? pure() : exact(terminator)).right(
-                pure(["data", m_typename].concat(entries))))).label("data definition")
+                exact(terminator)).right(
+                pure(["data", m_typename, m_deriving].concat(entries)))))).label(
+                "data definition")
+//console.log(datadef_entry.separated_by(exact("|")).left(exact(terminator).or(exact("deriving"))).parse(lex(
+//"b c  | d deriving a"
+//)))
+//let s = "data list ≡ nil | init last cons deriving ≤ | f map | show"
+//let s = "data nil | init last cons deriving ≤ | f map | show"
+//console.log(preprocess(s))
+//console.log(JSON.stringify(datadef.parse(lex(preprocess(s)))))
 
 // pattern (which can show up in function definitions and in lambdas)
 const pattern_terminated_by = p => new Parser(s => quote.parse(s)).or(term).terminated_by(p).bind(terms =>
@@ -532,7 +547,7 @@ const op = {
 let n_intrinsics = Object.keys(op).length
 let words = new Array(n_intrinsics).fill([])
 let word_map = {} // { name: bytecode index }
-let partial_words = {} // { name: true }. dict of partial functions
+let partial_words = { "primitive->": true } // { name: true }. dict of partial functions
 let typenames = { "integer": 0
                 , "number": 1
                 , "string": 2
@@ -653,19 +668,21 @@ function bind_tags(typename, arr) {
   families.push(new_tags)
 }
 
+// helper used by bind() and compile_datadef
+function bytecode_is_case(bytes) { return bytes.length > 0 && bytes[0] === op.CASE }
+
 function bind(name, bytes) {
   //console.log("binding =", name)
-  const is_case = bytes => bytes.length > 0 && bytes[0] === op.CASE
   if (!(name in word_map)) {
     words.push(bytes)
     word_map[name] = words.length - 1
   } else {
     let op = word_map[name]
-    if (!is_case(words[op])) // no additional branching possible
+    if (!bytecode_is_case(words[op])) // no additional branching possible
       return
     let cases = words[op][1]
     let arity = words[op][2]
-    if (!is_case(bytes)) { // simply add a catch-all case
+    if (!bytecode_is_case(bytes)) { // simply add a catch-all case
       ++words[op][1]; // increment case count
       for (let i = 0; i < arity; ++i) // add _ _ ... → a.k.a. a catch-all
         words[op] = words[op].concat([op.CASE_WILD])
@@ -1861,13 +1878,104 @@ const is_bound = (name, env) => {
   try {
     let id = encode_var_id(name, env)
     return true
-  } catch (e) {
-    return false
-  }
+  } catch (e) { return false }
 }
 
 function compile_datadef(datadef) {
-  bind_tags(datadef[1], datadef.slice(2))
+  let [_, m_name, m_deriving] = datadef
+  let tags = datadef.slice(3)
+
+  try {
+    bind_tags(m_name, tags)
+  } catch (e) {
+    if (m_name === null)
+      throw ["In a data type declaration:", e]
+    else
+      throw ["In the declaration of `" + m_name + "':", e]
+  }
+  // ast looks like:
+  // [["data","list",["deriving",["show"],["f","map"],["=<"]],["nil"],["init","last","cons"]]]
+
+  // autogenerate and compile:
+  //   →primitive cases
+  //   primitive→ cases
+  // for each pattern in "deriving" node:
+  //   compute arity of pattern based on final token (the function being derived)
+  //   pad out args with wildcards until arity reached (throw if args given > arity)
+  //   add as-variables to each wildcard in pattern
+  //   generate code "a →primitive b primitive .. (for each as-variable) function-being-derived"
+  //   bind generated code with as-pattern-enhanced pattern and code
+
+  if (m_deriving === null)
+    return []
+
+  if (m_name === null)
+    throw ["Can't derive functionality for anonymous data type"] // TODO relax this restriction by coming up with
+    // an "internal typename" for unnamed types, that you can reference in the generated pattern in derived args
+
+  // autogenerate →primitive and primitive→
+  // TODO when patterns in data decls, this'll be harder
+  let [to_prim, from_prim] = tags.map(tag => ((args, name) => { // TODO replace t0.. with guaranteed fresh variables
+    // lhs is the well-formed object, rhs is the primitive version. the asts can double as both code and pattern
+    let lhs = args.map((arg, i) => ["var", "t" + i]).concat([name])
+    let rhs = ["nil"].concat(args.bind((arg, i) => [["var", "t" + i], "cons"])).concat([["string", name], ":"])
+    return [["case", ["pattern"].concat(lhs), ["expr"].concat(rhs)],
+            ["case", ["pattern"].concat(rhs), ["expr"].concat(lhs)]]
+  })(tag.slice(0, -1), tag.slice(-1)[0])).unzip()
+
+  bind("->primitive", compile_lambda(["lambda"].concat(to_prim)))
+  bind("primitive->", compile_lambda(["lambda"].concat(from_prim), [], exhaustive_check=false))
+
+  let clauses = m_deriving.slice(1)
+  for (const clause of clauses) {
+    let args = clause.slice(0, -1)
+    let name = clause.slice(-1)[0]
+
+    // check if word to derive is bound
+    if (!(name in word_map))
+      throw ["Can't derive unknown function `" + name + "'"]
+
+    // check if word to derive can be extended
+    let op = word_map[name]
+    if (!bytecode_is_case(words[op])) // no additional branching possible
+      throw ["`" + name + "' is not derivable (is defined once for all cases)"]
+
+    // check that arity does not exceed that of known implementation
+    let cases = words[op][1]
+    let arity = words[op][2]
+    if (args.length > arity)
+      throw ["Can't derive implementation of `" + name + "' with arity " + args.length +
+             "when previous implementation has arity " + arity]
+
+    // pad out args with underscores to make arity agree with known arity
+    // TODO when patterns in data decls, this'll be harder
+    args = new Array(arity - args.length).fill("_").concat(args)
+    let pattern = ["pattern"].concat(args.bind((arg, i) => arg === "_" ? [["var", "t" + i], m_name] : arg))
+    let expr = ["expr"].concat(args.bind((arg, i) => arg == "_" ? [["var", "t" + i], "->primitive"] : [arg]))
+                       .concat([name])
+
+    let code = ["lambda", ["case", pattern, expr]]
+    console.log("args =", args, "pattenr =", pattern, "expr =", expr, "code =", code)
+    bind(name, compile_lambda(code))
+  }
+
+  //  let code = ["lambda",
+  //               ["case",
+  //                 ["pattern"].concat(
+  //body = [["var", "a"], ["var", "b"], ["bytecode", op.APP], 
+  //        ["lambda",
+  //          ["case",
+  //            ["pattern", ["var", "c"]],
+  //            ["expr"]
+  //              .concat(upto(j))
+  //              .concat([["var", "c"]])
+  //              .concat(upto(accessors.length, j + 1))
+  //              .concat([tag])]]]
+  //code = ["lambda",
+  //         ["case",
+  //           ["pattern"].concat(pattern).concat([tag]).concat([["var", "b"]]),
+  //             ["expr"].concat(body)]]
+
   return []
 }
 
@@ -2049,7 +2157,7 @@ function compile_pattern(pattern, env=[]) {
           result.push([op.CASE_STR].concat(encode_string(str)))
         } break
         case "quote": {
-          let code = compile_quote(pat, []) // function patterns cannot depend on env
+          let code = compile_quote(pat, []) // function patterns can't depend on env
           result.push([op.CASE_FUN, code])
         } break
       }
@@ -2327,7 +2435,7 @@ function compile_for_check_patterns(patterns) {
 
     if (env.length > 0)
       throw ["Pattern " + pretty + " is illegal.",
-             "Patterns in `for' block headers cannot contain variables."]
+             "Patterns in `for' block headers can't contain variables."]
 
     if (arity === null)
       arity = new_arity

@@ -71,12 +71,6 @@ nil (_ _ cons) compare ≡ LT
 
 (a ordering) (b ordering) compare ≡ a →primitive b →primitive compare
 
-# map
-
-nil _ function map ≡ nil
-a b cons f function map ≡ a f map (b f .) cons
-a b : f function map ≡ a f map b : primitive→
-
 # predicates and conditionals
 
 data bool ≡ true | false deriving show | compare
@@ -109,6 +103,12 @@ for _ number _ number | _ string _ string | _ list _ list | _ tagged-union _ tag
 for _ _
   /= ≡ = not
 
+# map
+
+nil _ function map ≡ nil
+a b cons f function map ≡ a f map (b f .) cons
+a b : f function map ≡ a f map b : primitive→
+
 # basic data types
 
 data pair ≡ fst snd , deriving show | compare | = | f map
@@ -139,7 +139,7 @@ a right b right <> ≡ a b <> right
 nil a <> ≡ a nil <> ≡ a
 a (b c cons) <> ≡ (a b <>) c cons 
 
-# monoids
+# monoid
 
 data mempty
 
@@ -148,7 +148,7 @@ mempty a ++ ≡ a mempty ++ ≡ a
 for _ number _ number | _ function _ function | _ bool _ bool | _ pair _ pair | _ list _ list
   ++ ≡ <>
 
-# folds/foldable
+# foldable
 
 nil a f function foldr ≡ a
 t h cons a f function foldr ≡ t (h a f .) f foldr
@@ -172,12 +172,14 @@ nil a cons _ intersperse ≡ nil a cons
 
 intercalate ≡ intersperse concat
 
-a list unpack ≡ (a go) (a length) where
-  nil go ≡ 
-  a b cons go ≡ a go b
+# misc list operations (make lib/list.eg?)
 
 nil f function filter ≡ nil
 a b cons f function filter ≡ a f filter b f . [b cons] when
+
+a list unpack ≡ (a go) (a length) where
+  nil go ≡ 
+  a b cons go ≡ a go b
 
 for _ list
   reverse ≡ unpack λ len → nil [swap cons] len rep where

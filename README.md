@@ -10,7 +10,6 @@ To run:
 
 ## Basics
 
-
 ```bash
 # line comment
 
@@ -21,7 +20,7 @@ do "hello, " "world" ++
 Define functions with `==`:
 ```bash
 0 tri == 0
-n tri == n (n 1 -) tri + # parentheses to group visually
+n tri == n (n 1 -) tri +
 
 do 100 tri
 # 5050
@@ -31,8 +30,8 @@ Define multiple cases at once by chaining equations together:
 ```scheme
 0 even? == 1 odd? == true
 1 even? == 0 odd? == false
-n even? == n 1 - odd?
-n odd? == n 1 - even?
+n even? == (n 1 -) odd?
+n odd? == (n 1 -) even?
 ```
 
 Quote with square brackets:
@@ -144,10 +143,13 @@ data head body tail creature
 
 ## Exhaustiveness and reachability
 
-All pattern matches must be exhaustive and reachable--the compiler automatically deduces the least general possible type that covers all the given patterns in a function definition or lambda expression and checks the patterns with respect to it.
+All pattern matches must be exhaustive and reachable--the compiler automatically deduces the least general possible type
+that covers all the given patterns in a function definition or lambda expression and checks the patterns with respect to it.
+This check isn't as strong as it would be in a statically typed language, but it helps keep definitions sane while still allowing
+functions that are difficult to assign simple types to, like `f n rep` (that just applies a function `f` to the stack `n` times).
 
-e.g. the compiler infers the type "optional list whose first item (if it exists) is an integer" for the lambda expression below, and complains about
-other values inhabited by this type that aren't considered.
+e.g. the compiler infers the type "optional list whose first item (if it exists) is an integer" for the lambda expression
+below, and complains that other values inhabited by this type aren't handled.
 ```bash
 bad == \ nil 3 cons itself -> 1
 # Error:
@@ -178,7 +180,7 @@ Since function overloading relies on pattern matching and the language isn't sta
 it can be hard to define functions tacitly, resulting in a lot of repeated code.
 For example, the [latex](https://github.com/johnli0135/edsger/blob/master/lib/latex.eg) 
 module overloads the arithmetic operators `+` `-` `*` and `/` in order to handle arithmetic on `expr` objects,
-which represent LaTeX expressions. These definitions essentially just pass their inputs on to a helper function:
+which represent LaTeX expressions. These definitions just pass their inputs on to a helper function:
 ```haskell
 data _ _ expr
 
@@ -197,8 +199,7 @@ This is really repetitive, but if we tried to eta-reduce each definition, writin
 ```haskell
 + == "+" 60 binop
 ```
-instead, then they would match against any input, which is too broad--any future definition
-of `+` would be considered an unreachable pattern.
+then they would match against any input, which is too broad--any future definition of `+` would be considered an unreachable pattern.
 
 A `for` block factors out these repetitions while leaving the function open for additional overloads:
 ```python
@@ -228,14 +229,12 @@ _ _ expr `a _ _ expr `b , == a b "," 70 binop
 ```
 
 The header of the `for` block can also contain multiple patterns, in which case a definition
-is generated for each pattern. For example, here is how number and string equality are defined
+is generated for each pattern. For example, here are how number and string equality are defined
 in [prelude](https://github.com/johnli0135/edsger/blob/master/lib/prelude.eg#L92):
 ```haskell
 for _ number _ number | _ string _ string
   = == cmp λ 0 -> true; _ -> false
 ```
-(`cmp`, defined in [base](https://github.com/johnli0135/edsger/blob/master/lib/base.eg#L15),
-returns -1, 0, or 1 based on comparison result)
 
 After desugaring:
 ```haskell
@@ -259,10 +258,42 @@ do with latex
 # ("\\frac{\\mathrm{d}}{\\mathrm{d}x}{\\left(\\frac{{x}^{2}}{2}+C\\right)}=x" 100 expr)
 ```
 
-`with` can also be useful for defining literal collections:
+`with` can also be useful for building compound literals:
 ```python
+import prelude set
+#
+
 nil with cons 1 2 3 4 5
 # (((((nil 1 cons) 2 cons) 3 cons) 4 cons) 5 cons)
+
+
+leaf make-set with insert 0 -1 2 -2 3 -3 4 -4 5
+# ((((((leaf -4 nothing leaf node) -3 nothing leaf node) -2 nothing leaf node) -1 nothing leaf node) 0 nothing (leaf 2 nothing (leaf 3 nothing (leaf 4 nothing (leaf 5 nothing leaf node) node) node) node) node) make-set)
+```
+
+## `deriving`
+
+The following automatically generates implementations of `show`, `compare`, `=`, and `map` for the option type:
+```haskell
+data option == option | from-itself itself deriving show | compare | = | f map
+```
+
+Internally, the following function definitions are generated:
+```bash
+a option show == a ->primitive show
+a option b option compare == a ->primitive b ->primitive compare
+a option b option = == a ->primitive b ->primitive =
+a option f function map == a ->primitive f map
+```
+
+`->primitive` partially represents any algebraic data type in terms of lists (to represent product type)
+and (string, list) pairs (to represent sum type).
+```haskell
+data list == nil | init last cons
+data tagged-union == _ _ :
+
+a itself ->primitive == nil a , "itself" :
+nothing ->primitive == nil "nothing" :
 ```
 
 ## Miscellaneous

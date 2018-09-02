@@ -275,7 +275,7 @@ leaf make-set with insert 0 -1 2 -2 3 -3 4 -4 5
 
 The following automatically generates implementations of `show`, `compare`, `=`, and `map` for the option type:
 ```haskell
-data option == option | from-itself itself deriving show | compare | = | f map
+data option == nothing | from-itself itself deriving show | compare | = | f map
 ```
 
 Internally, the following function definitions are generated:
@@ -286,15 +286,16 @@ a option b option = == a ->primitive b ->primitive =
 a option f function map == a ->primitive f map
 ```
 
-`->primitive` partially represents any algebraic data type in terms of lists (to represent product type)
-and (string, list) pairs (to represent sum type).
+`->primitive` partially represents any algebraic data type in terms of (string, list) pairs.
 ```haskell
 data list == nil | init last cons
 data tagged-union == _ _ :
 
-a itself ->primitive == nil a , "itself" :
+a itself ->primitive == nil a cons "itself" :
 nothing ->primitive == nil "nothing" :
 ```
+
+So to make any function `f` derivable, you can just implement it for `tagged-union`s and `list`s.
 
 ## Miscellaneous
 

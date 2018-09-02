@@ -13,7 +13,7 @@ To run:
 ```bash
 # line comment
 
-do "hello, " "world" ++
+"hello, " "world" ++
 # "hello, world"
 ```
 
@@ -22,7 +22,7 @@ Define functions with `==`:
 0 tri == 0
 n tri == n (n 1 -) tri +
 
-do 100 tri
+100 tri
 # 5050
 ```
 
@@ -36,25 +36,25 @@ n odd? == (n 1 -) even?
 
 Quote with square brackets:
 ```bash
-do [1 +]
+[1 +]
 # [3 0 0 0 1 32]
 ```
 
 Unquote with function application operator `.`:
 ```bash
-do 1 [1 +] .
+1 [1 +] .
 # 2
 ```
 
 Define and apply an anonymous function with `\` and `->`:
 ```bash
-do 1 2 \ a b -> b a
+1 2 \ a b -> b a
 # 2 1
 ```
 
 Anonymous functions can also have multiple cases:
 ```bash
-do 1 \ 0 -> "zero"
+1 \ 0 -> "zero"
        _ -> "something else"
 # "something else"
 ```
@@ -117,7 +117,7 @@ Pattern variables prefixed by a backtick are interpreted as as-patterns:
 (a b cons) `c destruct-and-copy == a b c
 nil destruct-and-copy == nil nil nil
 
-do nil 1 cons destruct-and-copy
+nil 1 cons destruct-and-copy
 # nil 1 (nil 1 cons)
 ```
 
@@ -251,10 +251,10 @@ For example, the [latex](https://github.com/johnli0135/edsger/blob/master/lib/la
 module uses this to make it easier to generate LaTeX code:
 ```python
 import latex
+#
 
-do with latex
-     x 2 ^ 2 / C + x der x =
-
+with latex
+  x 2 ^ 2 / C + x der x =
 # ("\\frac{\\mathrm{d}}{\\mathrm{d}x}{\\left(\\frac{{x}^{2}}{2}+C\\right)}=x" 100 expr)
 ```
 
@@ -265,7 +265,6 @@ import prelude set
 
 nil with cons 1 2 3 4 5
 # (((((nil 1 cons) 2 cons) 3 cons) 4 cons) 5 cons)
-
 
 leaf make-set with insert 0 -1 2 -2 3 -3 4 -4 5
 # ((((((leaf -4 nothing leaf node) -3 nothing leaf node) -2 nothing leaf node) -1 nothing leaf node) 0 nothing (leaf 2 nothing (leaf 3 nothing (leaf 4 nothing (leaf 5 nothing leaf node) node) node) node) node) make-set)
@@ -286,7 +285,7 @@ a option b option = == a ->primitive b ->primitive =
 a option f function map == a ->primitive f map
 ```
 
-`->primitive` partially represents any algebraic data type in terms of (string, list) pairs.
+`->primitive` partially represents any data type in terms of (string, list) pairs.
 ```haskell
 data list == nil | init last cons
 data tagged-union == _ _ :

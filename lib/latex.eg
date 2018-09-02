@@ -36,6 +36,8 @@ a _ expr c _ expr ^ ≡ "{" a show ++ "}^{" ++ c show ++ "}" ++ 0 expr
 a b expr c _ expr int ≡ "\\int " a b expr 50 wrap ++ "~\\mathrm{d}" ++ c show ++ 50 expr
 a b expr c _ expr der ≡ "\\frac{\\mathrm{d}}{\\mathrm{d}" c show ++ "}" ++ a b expr 50 wrap ++ 50 expr
 
+# larger expressions
+
 l (n _ expr) cases ≡ (nil l cons) (n 1 -) cases' 90 expr where
   l 0 cases' ≡ "\\begin{cases}" l [show] map "\\\\" intercalate ++ "\\end{cases}" ++
   l n cases' ≡ λ case → l case lcons n 1 - cases'

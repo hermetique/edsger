@@ -1937,7 +1937,7 @@ function compile_datadef(datadef) {
 
     // check if word to derive can be extended
     let op = word_map[name]
-    if (!bytecode_is_case(words[op])) // no additional branching possible
+    if (!bytecode_is_case(words[op])) // no additional branching possible //TODO check that this actually catches nonextendable functions
       throw ["`" + name + "' is not derivable (is defined once for all cases)"]
 
     // check that arity does not exceed that of known implementation
@@ -1945,7 +1945,7 @@ function compile_datadef(datadef) {
     let arity = words[op][2]
     if (args.length > arity)
       throw ["Can't derive implementation of `" + name + "' with arity " + args.length +
-             "when previous implementation has arity " + arity]
+             " when previous implementation has arity " + arity]
 
     // pad out args with underscores to make arity agree with known arity
     // TODO when patterns in data decls, this'll be harder
@@ -1955,7 +1955,11 @@ function compile_datadef(datadef) {
                        .concat([name])
 
     let code = ["lambda", ["case", pattern, expr]]
-    //console.log("args =", args, "pattenr =", pattern, "expr =", expr, "code =", code)
+    //console.log()
+    //console.log("args =", JSON.stringify(args))
+    //console.log("pattern =", JSON.stringify(pattern))
+    //console.log("expr =", JSON.stringify(expr))
+    //console.log("code =", JSON.stringify(code))
     bind(name, compile_lambda(code))
   }
 

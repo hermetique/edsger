@@ -69,7 +69,8 @@ nil (_ _ cons) compare ≡ LT
 (_ _ cons) nil compare ≡ GT
 (a b cons) (c d cons) compare ≡ b d compare λ EQ → a c compare; a → a
 
-(a ordering) (b ordering) compare ≡ a →primitive b →primitive compare
+for _ ordering _ ordering
+  compare ≡ [→primitive] to-both compare
 
 # predicates and conditionals
 

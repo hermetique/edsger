@@ -1186,6 +1186,7 @@ function pattern_transfer(matches) {
 
 // check that the given compiled patterns are exhaustive for the smallest possible types satisfying the patterns
 function check_exhaustive(patterns) {
+  //console.log("Checking ", patterns.map(pattern2str))
   const dict_copy = d => { let a = {}; for (const v in d) a[v] = true; return a }
   const dict_empty = d => Object.keys(d).length === 0
   const dict_equal = (a, b) => {

@@ -1,43 +1,83 @@
 import prelude
 
-data _ _ expr
+data expr ≡ _ num
+          | _ str
+          | _ par
+          | _ abs
+          | _ norm
+          | _ _ pow
+          | _ _ frac
+          | _ _ mul
+          | _ _ div
+          | _ _ add
+          | _ _ sub
+          | _ _ eqn
+          | _ _ int
+          | _ _ der
 
-s parenthesize ≡ "{\\left(" s ++ "\\right)}" ++
-(val old-lvl expr) new-lvl wrap ≡ (val show) old-lvl new-lvl > [parenthesize] when
+for _ number
+  latex ≡ num
 
-a number latex ≡ a string latex ≡ a 0 expr
-a _ expr show ≡ a show
+for _ string
+  latex ≡ str
 
-# combinator for binary operators, enforces precedence
+for _ expr _ expr
+  + ≡ add
+  * ≡ mul
+  - ≡ sub
+  ^ ≡ pow
+  / ≡ frac
+  = ≡ eqn
 
-a b name lvl binop ≡ (a lvl wrap) name ++ (b lvl wrap) ++ lvl expr
+# lowest number = highest precedence
 
-# arithmetic
+_ num precedence ≡ _ str precedence ≡ _ par precedence ≡ _ abs precedence ≡ _ norm precedence ≡ 0
+_ _ pow precedence ≡ 10
+_ _ mul precedence ≡ _ _ frac precedence ≡ _ _ div precedence ≡ 20
+_ _ add precedence ≡ _ _ sub precedence ≡ 30
+_ _ int precedence ≡ _ _ der precedence ≡ 40
+_ _ eqn precedence ≡ 50
 
-for _ _ expr _ _ expr
-  + ≡ "+" 60 binop
-  - ≡ "-" 60 binop
-  * ≡ "\\cdot " 50 binop
-  = ≡ "=" 100 binop
-  lt ≡ "<" 70 binop
-  gt ≡ ">" 70 binop
-  le ≡ "\\le " 70 binop
-  ge ≡ "\\ge " 70 binop
-  , ≡ "," 70 binop
+# add parentheses wherever necessary
 
-a _ expr c _ expr / ≡ "\\frac{" a show ++ "}{" ++ c show ++ "}" ++ 0 expr
+for _ num | _ str
+  parenthesize ≡ ()
 
-c _ expr . ≡ λ a _ expr → c a parenthesize ++ 50 expr
+a par parenthesize ≡ a abs parenthesize
+                   ≡ a norm parenthesize
+                   ≡ a parenthesize
 
-a b expr abs ≡ "{\\left|" a show ++ "\\right|}" ++ 0 expr
-a b expr norm ≡ "{\\lVert " a show ++ "\\rVert}" ++ 0 expr
+n ctr parenthesize-by-precedence ≡ [dup precedence n > [par] when] to-both ctr .
 
-a _ expr c _ expr ^ ≡ "{" a show ++ "}^{" ++ c show ++ "}" ++ 0 expr
-a b expr c _ expr int ≡ "\\int " a b expr 50 wrap ++ "~\\mathrm{d}" ++ c show ++ 50 expr
-a b expr c _ expr der ≡ "\\frac{\\mathrm{d}}{\\mathrm{d}" c show ++ "}" ++ a b expr 50 wrap ++ 50 expr
+a b pow `c parenthesize ≡ a b c precedence [pow] parenthesize-by-precedence
+a b frac `c parenthesize ≡ a parenthesize b parenthesize frac
+a b mul `c parenthesize ≡ a b c precedence [mul] parenthesize-by-precedence
+a b div `c parenthesize ≡ a b c precedence [div] parenthesize-by-precedence
+a b add `c parenthesize ≡ a b c precedence [add] parenthesize-by-precedence
+a b sub `c parenthesize ≡ a b c precedence [sub] parenthesize-by-precedence
+a b eqn `c parenthesize ≡ a parenthesize b parenthesize eqn
+a b int `c parenthesize ≡ a parenthesize b parenthesize int
+a b der `c parenthesize ≡ a parenthesize b parenthesize der
 
-# larger expressions
+# convert to latex
 
-l (n _ expr) cases ≡ (nil l cons) (n 1 -) cases' 90 expr where
-  l 0 cases' ≡ "\\begin{cases}" l [show] map "\\\\" intercalate ++ "\\end{cases}" ++
-  l n cases' ≡ λ case → l case lcons n 1 - cases'
+a number num show ≡ a show
+a string str show ≡ a
+a par show ≡ "{(" a show ++ ")}" ++
+a abs show ≡ "\\left|" a show ++ "\\right||" ++
+a norm show ≡ "\\left\\lVert " a show ++ "\\right\\rVert" ++
+a b pow show ≡ a show "^" ++ b show ++
+a b frac show ≡ "\\frac{" a show ++ "}{" ++ b show ++ "}" ++
+a num b num mul show ≡ a show "\\cdot " ++ b show ++
+a b mul show ≡ a show " " ++ b show ++
+a b div show ≡ a show "/" ++ b show ++
+a b add show ≡ a show "+" ++ b show ++
+a b sub show ≡ a show "-" ++ b show ++
+a b eqn show ≡ a show "=" ++ b show ++
+a b int show ≡ "\\int " a show ++ "\\mathrm{d}" ++ b show ++
+a b der show ≡ "\\frac{\\mathrm{d}}{\\mathrm{d}" b show ++ "}" ++ a show ++
+
+# expander
+
+for _ expr
+  expand ≡ parenthesize show

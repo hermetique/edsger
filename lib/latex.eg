@@ -33,9 +33,9 @@ for _ expr _ expr
 
 _ num precedence ≡ _ str precedence ≡ _ par precedence ≡ _ abs precedence ≡ _ norm precedence ≡ 0
 _ _ pow precedence ≡ 10
-_ _ mul precedence ≡ _ _ frac precedence ≡ _ _ div precedence ≡ 20
+_ _ mul precedence ≡ _ _ frac precedence ≡ _ _ div precedence ≡ _ _ der precedence ≡ 20
 _ _ add precedence ≡ _ _ sub precedence ≡ 30
-_ _ int precedence ≡ _ _ der precedence ≡ 40
+_ _ int precedence ≡ 40
 _ _ eqn precedence ≡ 50
 
 # add parentheses wherever necessary
@@ -43,27 +43,26 @@ _ _ eqn precedence ≡ 50
 for _ num | _ str
   parenthesize ≡ ()
 
-a par parenthesize ≡ a abs parenthesize
-                   ≡ a norm parenthesize
-                   ≡ a parenthesize
+a par parenthesize ≡ a parenthesize par
+a abs parenthesize ≡ a norm parenthesize ≡ a parenthesize
 
 n ctr parenthesize-by-precedence ≡ [dup precedence n > [par] when] to-both ctr .
 
 a b pow `c parenthesize ≡ a b c precedence [pow] parenthesize-by-precedence
 a b frac `c parenthesize ≡ a parenthesize b parenthesize frac
 a b mul `c parenthesize ≡ a b c precedence [mul] parenthesize-by-precedence
+a b der `c parenthesize ≡ a b c precedence [der] parenthesize-by-precedence
 a b div `c parenthesize ≡ a b c precedence [div] parenthesize-by-precedence
 a b add `c parenthesize ≡ a b c precedence [add] parenthesize-by-precedence
 a b sub `c parenthesize ≡ a b c precedence [sub] parenthesize-by-precedence
 a b eqn `c parenthesize ≡ a parenthesize b parenthesize eqn
 a b int `c parenthesize ≡ a parenthesize b parenthesize int
-a b der `c parenthesize ≡ a parenthesize b parenthesize der
 
 # convert to latex
 
 a number num show ≡ a show
 a string str show ≡ a
-a par show ≡ "{(" a show ++ ")}" ++
+a par show ≡ "{\\left(" a show ++ "\\right)}" ++
 a abs show ≡ "\\left|" a show ++ "\\right||" ++
 a norm show ≡ "\\left\\lVert " a show ++ "\\right\\rVert" ++
 a b pow show ≡ a show "^" ++ b show ++

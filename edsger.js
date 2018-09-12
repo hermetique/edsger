@@ -1499,13 +1499,22 @@ function check_exhaustive(patterns) {
   }
 
   let inferred = patterns.map(infer_from).reduce((a, b) => a.concat(b))
+  //console.log("inferred.length =", inferred.length, "inferred =", inferred.map(a => a.toString()).join("\n"))
+  //console.log("patterns.length =", patterns.length, "patterns =", patterns.map(pattern2str))
+  //if (patterns.length === 26)
+  //  console.log("here!", inferred.length)
+
+  // eliminate any duplicates from the previous pass or from the original inferred types
+  const duplicate_free = l => {
+    let results = []
+    for (const i of l) 
+      if (results.map(a => !a.equals(i)).reduce((a, b) => a && b, true))
+        results.push(i)
+    return results
+  }
+  inferred = duplicate_free(inferred)
+
   for (let i = 0; i < patterns.length; ++i) {
-    // eliminate any duplicates from the previous pass or from the original inferred types
-    let without_duplicates = []
-    for (const i of inferred)
-      if (without_duplicates.map(a => !a.equals(i)).reduce((a, b) => a && b, true))
-        without_duplicates.push(i)
-    inferred = without_duplicates
 
     // construct new inferred types in new_inferred
     let new_inferred = []
@@ -1563,7 +1572,9 @@ function check_exhaustive(patterns) {
     if (!i.is_satisfied)
       throw ["Patterns are not exhaustive:", patterns.map(pattern2str),
              "The following inferred cases are not satisfied:",
-             inferred.filter(a => !a.is_satisfied).map(a => a.toString())]
+             duplicate_free(inferred)
+               .filter(a => !a.is_satisfied)
+               .map(a => a.toString())]
 }
 
 // -------------------- disassembler --------------------
